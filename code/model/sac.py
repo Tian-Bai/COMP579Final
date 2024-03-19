@@ -197,10 +197,10 @@ class PolicyNetwork(nn.Module):
         ''' deterministic evaluation '''
         # log_prob = Normal(mean, std).log_prob(mean) - torch.log(1. - torch.tanh(mean).pow(2) + epsilon) -  np.log(self.action_range)
         '''
-         both dims of normal.log_prob and -log(1-a**2) are (N,dim_of_action); 
-         the Normal.log_prob outputs the same dim of input features instead of 1 dim probability, 
-         needs sum up across the features dim to get 1 dim prob; or else use Multivariate Normal.
-         '''
+        both dims of normal.log_prob and -log(1-a**2) are (N,dim_of_action); 
+        the Normal.log_prob outputs the same dim of input features instead of 1 dim probability, 
+        needs sum up across the features dim to get 1 dim prob; or else use Multivariate Normal.
+        '''
         log_prob = log_prob.sum(dim=-1, keepdim=True)
         return action, log_prob, z, mean, log_std
         
@@ -223,7 +223,7 @@ class PolicyNetwork(nn.Module):
         return (self.action_range*a).numpy()
 
 
-def update(batch_size, reward_scale, gamma=0.99,soft_tau=1e-2):
+def update(batch_size, reward_scale, gamma=0.99, soft_tau=1e-2):
     alpha = 1.0  # trade-off between exploration (max entropy) and exploitation (max Q)
     
     state, action, reward, next_state, done = replay_buffer.sample(batch_size)
@@ -240,7 +240,7 @@ def update(batch_size, reward_scale, gamma=0.99,soft_tau=1e-2):
     predicted_value    = value_net(state)
     new_action, log_prob, z, mean, log_std = policy_net.evaluate(state)
 
-    reward = reward_scale*(reward - reward.mean(dim=0)) /reward.std(dim=0) # normalize with batch mean and std
+    reward = reward_scale * (reward - reward.mean(dim=0)) /reward.std(dim=0) # normalize with batch mean and std
 
 # Training Q Function
     target_value = target_value_net(next_state)
@@ -257,7 +257,7 @@ def update(batch_size, reward_scale, gamma=0.99,soft_tau=1e-2):
     soft_q_optimizer2.step()  
 
 # Training Value Function
-    predicted_new_q_value = torch.min(soft_q_net1(state, new_action),soft_q_net2(state, new_action))
+    predicted_new_q_value = torch.min(soft_q_net1(state, new_action), soft_q_net2(state, new_action))
     target_value_func = predicted_new_q_value - alpha * log_prob # for stochastic training, it equals to expectation over action
     value_loss = value_criterion(predicted_value, target_value_func.detach())
 
@@ -305,7 +305,7 @@ def plot(rewards, envname):
     clear_output(True)
     plt.figure(figsize=(20,5))
     plt.plot(rewards)
-    plt.savefig('sac % s.png' % envname)
+    plt.savefig('sac %s.png' % envname)
     # plt.show()
 
 assert not (args.envnum == -1 and args.envname == 'None') and not (args.envnum != -1 and args.envname != 'None')
