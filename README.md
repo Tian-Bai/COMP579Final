@@ -9,3 +9,9 @@ Our contributions can be summarized as follows:
 1.	We extensively evaluate the effectiveness of predictive variance reduction on decreasing the variance of gradients.
 2.	We empirically test whether low gradient variances could lead to a better stability of RL algorithms, and how significant the advantage is.
 3.	We present benchmarking results and ablation studies on complex control problems, and compare the performances to state-of-the-art algorithms including SAC and A3C.
+
+References:
+1. Johnson, R., Zhang, T.: Accelerating stochastic gradient descent using predictive variance reduction. Adv. Neural Inf. Process. Syst. 26, 315–323 (2013).
+2. Nicolas Le Roux, Mark Schmidt, and Francis Bach. A Stochastic Gradient Method with an Exponential Convergence Rate for Strongly-Convex Optimization with Finite Training Sets. arXiv preprint arXiv:1202.6258, 2012.
+3. Tatjana C., Gauthier G., François F. and Simon L. Reducing Noise in GAN Training with Variance Reduced Extragradient. arXiv preprint arXiv: 1904.0859, 2020.
+4. Payal Bawa, Rafael Oliveira, and Fabio Ramos. Variance Reduction in Off-Policy Deep Reinforcement Learning using Spectral Normalization. Deep Reinforcement Learning Workshop NeurIPS 2022, 2022.
