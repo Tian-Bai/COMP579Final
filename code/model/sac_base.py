@@ -386,7 +386,6 @@ if __name__ == '__main__':
 
             episode_reward = 0
             
-            
             for step in range(max_steps):
                 if frame_idx >= explore_steps:
                     action = policy_net.get_action(state, deterministic=DETERMINISTIC)
@@ -410,7 +409,7 @@ if __name__ == '__main__':
                 if done:
                     break
 
-            if eps % 500 == 0 and eps>0:
+            if eps % 500 == 0 and eps > 0:
                 plot(rewards, ENV)
                 torch.save(policy_net.state_dict(), model_path)
 
