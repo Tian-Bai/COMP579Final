@@ -94,6 +94,7 @@ def finish_episode():
         # calculate the discounted value
         R = r + gamma * R
         returns.appendleft(R)
+    returns = torch.tensor(returns)
 
     for (_, log_prob, _, val), R in zip(latest_steps, returns):
         advantage = R - val.item()
@@ -121,7 +122,7 @@ def finish_episode():
     latest_steps = []
 
 
-def finish_step(update_time=20, lr=3e-2):
+def finish_step(update_time=20, lr=3e-3):
     '''
     The procedure after a step.
     Now we can sample past episodes and do the corresponding updates.
@@ -129,11 +130,11 @@ def finish_step(update_time=20, lr=3e-2):
     n = len(value_pass_grad)
 
     # we first calculate mu.
-    value_mu = [0 for param in value.parameters()]
+    value_mu = [torch.zeros_like(param.grad) for param in value.parameters()]
     for p in value_pass_grad:
         for i, g in enumerate(p):
             value_mu[i] += g / n
-    actor_mu = [0 for param in actor.parameters()]
+    actor_mu = [torch.zeros_like(param.grad) for param in actor.parameters()]
     for p in actor_pass_grad:
         for i, g in enumerate(p):
             actor_mu[i] += g / n
@@ -141,6 +142,8 @@ def finish_step(update_time=20, lr=3e-2):
     for i_update in range(update_time):
         # pick a random previous episode t
         t = np.random.randint(0, n)
+        value.zero_grad()
+        actor.zero_grad()
 
         # calculate the current gradient
         R = 0
@@ -150,32 +153,30 @@ def finish_step(update_time=20, lr=3e-2):
         for r in rewards[t][::-1]:
             R = r + gamma * R
             returns.appendleft(R)
+        returns = torch.tensor(returns)
 
         for (action, _, state, _), R in zip(steps[t][::-1], returns):
             cur_val = value(state)
-            cur_advantage = R - cur_val
+            cur_advantage = torch.subtract(R, cur_val)
+            # need to detach to ignore gradient through value model
+            cur_advantage = cur_advantage.detach()
             m = Categorical(actor(state))
             cur_log_prob = m.log_prob(action)
             value_losses.append(F.smooth_l1_loss(cur_val, torch.tensor([R])))
             policy_losses.append(-cur_log_prob * cur_advantage)
 
-        '''TODO'''
-        # cannot get current gradient???
+
         value_loss = torch.stack(value_losses).sum()
-        value_loss.retain_grad()
-        value_loss.backward(retain_graph=True)
-        print(value_loss.grad)
+        value_loss.backward()
+
         policy_loss = torch.stack(policy_losses).sum()
-        policy_loss.retain_grad()
-        policy_loss.backward(retain_graph=True)
-        print(policy_loss.grad)
-        
-        # add or subtract?
-        for i, param in enumerate(value.parameters()):
-            param.data -= lr * (value_mu[i] - value_pass_grad[t][i] + value_loss.grad[i])
-        
-        for i, param in enumerate(actor.parameters()):
-            param.data -= lr * (actor_mu[i] - actor_pass_grad[t][i] + policy_loss.grad[i])
+        policy_loss.backward()
+
+        for i, p in enumerate(value.parameters()):
+            p.data.add_(-lr, value_mu[i] - value_pass_grad[t][i] + p.grad)
+
+        for i, p in enumerate(actor.parameters()):
+            p.data.add_(-lr, actor_mu[i] - actor_pass_grad[t][i] + p.grad)
 
 
 def main():
