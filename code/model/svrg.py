@@ -20,7 +20,7 @@ class SVRG_k(Optimizer):
         super(SVRG_k, self).__init__(params, defaults)
     
     def get_param_groups(self):
-            return self.param_groups
+        return self.param_groups
 
     def set_u(self, new_u):
         """Set the mean gradient for the current epoch. 
