@@ -35,13 +35,12 @@ rewards = []
 latest_steps = []
 latest_rewards = []
 
-def set_seed(seed=33):
-    random.seed(seed)
-    np.random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
+random.seed(33)
+np.random.seed(33)
+os.environ['PYTHONHASHSEED'] = str(33)
+torch.manual_seed(33)
+torch.cuda.manual_seed(33)
+torch.backends.cudnn.deterministic = True
 
 # 2 simple 2-layer NNs for the actor and critic
 class Actor(nn.Module):
@@ -137,7 +136,7 @@ def finish_episode():
     latest_steps = []
 
 
-def finish_step(update_time, lr=3e-2):
+def finish_step(update_time, lr=1e-4):
     '''
     The procedure after a step.
     Now we can sample past episodes and do the corresponding updates.
@@ -204,16 +203,15 @@ def finish_step(update_time, lr=3e-2):
 
 
 def main():
-    set_seed()
-
     ep_rewards = []
+    groupsize = 10
 
     # we first freeze the model to get a 'full batch' of gradients
     # Then we use SVRG to update the model param multiple times
-    for i_step in range(200):
-        for j_episode in range(1):
+    for i_step in range(300):
+        for j_episode in range(groupsize):
             # could change it to a decreasing number?
-            state, _ = env.reset(seed=33)
+            state, _ = env.reset()
             ep_reward = 0
 
             while True:
@@ -226,9 +224,10 @@ def main():
                 if done:
                     break
             ep_rewards.append(ep_reward)
+            # print(ep_reward)
+            # time.sleep(3)
             finish_episode()
-        finish_step(1)
-        time.sleep(4)
+        finish_step(groupsize * 2)
 
         if i_step % 1 == 0:
             print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))

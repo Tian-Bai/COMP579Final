@@ -28,13 +28,12 @@ state_dim  = env.observation_space.shape[0]
 steps = []
 rewards = []
 
-def set_seed(seed=33):
-    random.seed(seed)
-    np.random.seed(seed)
-    os.environ['PYTHONHASHSEED'] = str(seed)
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed(seed)
-    torch.backends.cudnn.deterministic = True
+random.seed(33)
+np.random.seed(33)
+os.environ['PYTHONHASHSEED'] = str(33)
+torch.manual_seed(33)
+torch.cuda.manual_seed(33)
+torch.backends.cudnn.deterministic = True
     
 class Actor(nn.Module):
     def __init__(self, hidden_dim=16):
@@ -65,8 +64,8 @@ class Value(nn.Module):
 actor = Actor()
 value = Value()
 
-actor_optimizer = optim.Adam(actor.parameters(), lr=3e-2)
-value_optimizer = optim.Adam(value.parameters(), lr=3e-2)
+actor_optimizer = optim.SGD(actor.parameters(), lr=3e-2)
+value_optimizer = optim.SGD(value.parameters(), lr=3e-2)
 
 def select_action(state):
     state = torch.from_numpy(state).float()
@@ -113,10 +112,6 @@ def finish_episode():
     actor_loss.backward()
     value_loss.backward()
 
-    for p in value.parameters():
-        print(p.grad)
-        pass
-
     actor_optimizer.step()
     value_optimizer.step()
 
@@ -124,11 +119,9 @@ def finish_episode():
     steps = []
 
 def main():
-    set_seed()
-
     ep_rewards = []
 
-    for i_episode in range(300):
+    for i_episode in range(3000):
         state, _ = env.reset(seed=33)
         
         # tried using env.action_space.seed(), still not repeatable??
@@ -146,7 +139,6 @@ def main():
                 break
         ep_rewards.append(ep_reward)
         finish_episode()
-        time.sleep(2)
 
         if i_episode % 1 == 0:
             print('Episode {}\tLast reward: {:.2f}'.format(i_episode, ep_reward))
