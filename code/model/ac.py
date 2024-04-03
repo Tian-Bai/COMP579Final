@@ -10,6 +10,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
+import random
+import os
+import time
 
 # Cart Pole
 
@@ -25,6 +28,14 @@ state_dim  = env.observation_space.shape[0]
 steps = []
 rewards = []
 
+def set_seed(seed=33):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+    
 class Actor(nn.Module):
     def __init__(self, hidden_dim=16):
         super().__init__()
@@ -81,13 +92,14 @@ def finish_episode():
         # calculate the discounted value
         R = r + gamma * R
         returns.appendleft(R)
+    returns = torch.tensor(returns)
 
     # normalization deleted
 
-    for (log_prob, value), R in zip(steps, returns):
-        advantage = R - value.item()
+    for (log_prob, val), R in zip(steps, returns):
+        advantage = R - val.item()
         policy_losses.append(-log_prob * advantage)
-        value_losses.append(F.smooth_l1_loss(value, torch.tensor([R])))
+        value_losses.append(F.smooth_l1_loss(val, torch.tensor([R])))
 
     # reset gradients
     actor_optimizer.zero_grad()
@@ -100,6 +112,11 @@ def finish_episode():
     # perform backprop
     actor_loss.backward()
     value_loss.backward()
+
+    for p in value.parameters():
+        print(p.grad)
+        pass
+
     actor_optimizer.step()
     value_optimizer.step()
 
@@ -107,10 +124,15 @@ def finish_episode():
     steps = []
 
 def main():
+    set_seed()
+
     ep_rewards = []
 
     for i_episode in range(300):
-        state, _ = env.reset()
+        state, _ = env.reset(seed=33)
+        
+        # tried using env.action_space.seed(), still not repeatable??
+
         ep_reward = 0
 
         while True:
@@ -124,8 +146,9 @@ def main():
                 break
         ep_rewards.append(ep_reward)
         finish_episode()
+        time.sleep(2)
 
-        if i_episode % 10 == 0:
+        if i_episode % 1 == 0:
             print('Episode {}\tLast reward: {:.2f}'.format(i_episode, ep_reward))
     clear_output(True)
     plt.figure(figsize=(20,5))

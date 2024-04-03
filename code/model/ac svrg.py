@@ -11,14 +11,18 @@ import torch.nn.functional as F
 import torch.optim as optim
 from torch.distributions import Categorical
 from torchviz import make_dot
+import time
+import random
+import os
 
 # Cart Pole
-
 gamma = 0.95
 
 env = gym.make('CartPole-v1')
 eps = np.finfo(np.float32).eps.item()
-SavedAction = namedtuple('SavedAction', ['action', 'log_prob', 'state', 'val'])
+
+# SavedAction works as a replay buffer
+SavedAction = namedtuple('SavedAction', ['s', 'v', 'a', 'log_p'])
 
 action_dim = env.action_space.n
 state_dim  = env.observation_space.shape[0]
@@ -31,6 +35,15 @@ rewards = []
 latest_steps = []
 latest_rewards = []
 
+def set_seed(seed=33):
+    random.seed(seed)
+    np.random.seed(seed)
+    os.environ['PYTHONHASHSEED'] = str(seed)
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed(seed)
+    torch.backends.cudnn.deterministic = True
+
+# 2 simple 2-layer NNs for the actor and critic
 class Actor(nn.Module):
     def __init__(self, hidden_dim=16):
         super().__init__()
@@ -71,7 +84,7 @@ def select_action(state):
 
     m = Categorical(prob)
     action = m.sample()
-    latest_steps.append(SavedAction(action, m.log_prob(action), state, val))
+    latest_steps.append(SavedAction(state, val, action, m.log_prob(action)))
 
     return action.item()
 
@@ -94,14 +107,18 @@ def finish_episode():
         returns.appendleft(R)
     returns = torch.tensor(returns)
 
-    for (_, log_prob, _, val), R in zip(latest_steps, returns):
-        advantage = R - val.item()
-        policy_losses.append(-log_prob * advantage)
+    for (s, v, a, log_p), R in zip(latest_steps, returns):
+        advantage = R - v.item()
+        policy_losses.append(-log_p * advantage)
         # since we don't update now, value is w.r.t the snapshot model
-        value_snapshot_losses.append(F.smooth_l1_loss(val, torch.tensor([R])))
+        value_snapshot_losses.append(F.smooth_l1_loss(v, torch.tensor([R])))
     
+    value.zero_grad()
+    actor.zero_grad()
+
     actor_loss = torch.stack(policy_losses).sum()
     value_snapshot_loss = torch.stack(value_snapshot_losses).sum()
+
     actor_loss.backward()
     value_snapshot_loss.backward()
 
@@ -111,7 +128,7 @@ def finish_episode():
     actor_grad = [param.grad.clone() for param in actor.parameters()]
     actor_pass_grad.append(actor_grad)
 
-    # remember the trajectories
+    # remember the trajectories in a group
     rewards.append(latest_rewards)
     steps.append(latest_steps)
 
@@ -120,11 +137,13 @@ def finish_episode():
     latest_steps = []
 
 
-def finish_step(update_time=5, lr=1e-3):
+def finish_step(update_time, lr=3e-2):
     '''
     The procedure after a step.
     Now we can sample past episodes and do the corresponding updates.
     '''
+    global value_pass_grad, actor_pass_grad, steps, rewards
+
     n = len(value_pass_grad)
 
     # we first calculate mu.
@@ -153,16 +172,15 @@ def finish_step(update_time=5, lr=1e-3):
             returns.appendleft(R)
         returns = torch.tensor(returns)
 
-        for (action, _, state, _), R in zip(steps[t][::-1], returns):
-            cur_val = value(state)
+        for (s, v, a, log_p), R in zip(steps[t], returns):
+            cur_val = value(s)
             cur_advantage = torch.subtract(R, cur_val)
             # need to detach to ignore gradient through value model
             cur_advantage = cur_advantage.detach()
-            m = Categorical(actor(state))
-            cur_log_prob = m.log_prob(action)
+            m = Categorical(actor(s))
+            cur_log_prob = m.log_prob(a)
             value_losses.append(F.smooth_l1_loss(cur_val, torch.tensor([R])))
             policy_losses.append(-cur_log_prob * cur_advantage)
-
 
         value_loss = torch.stack(value_losses).sum()
         value_loss.backward()
@@ -170,14 +188,24 @@ def finish_step(update_time=5, lr=1e-3):
         policy_loss = torch.stack(policy_losses).sum()
         policy_loss.backward()
 
-        for i, p in enumerate(value.parameters()):
-            p.data.add_(-lr, value_mu[i] - value_pass_grad[t][i] + p.grad)
+        with torch.no_grad():
+            for i, p in enumerate(value.parameters()):
+                new_p = p - lr * (value_mu[i] - value_pass_grad[t][i] + p.grad)
+                p.copy_(new_p)
 
-        for i, p in enumerate(actor.parameters()):
-            p.data.add_(-lr, actor_mu[i] - actor_pass_grad[t][i] + p.grad)
+            for i, p in enumerate(actor.parameters()):
+                new_p = p - lr * (actor_mu[i] - actor_pass_grad[t][i] + p.grad)
+                p.copy_(new_p)
+    
+    value_pass_grad = []
+    actor_pass_grad = []
+    steps = []
+    rewards = []
 
 
 def main():
+    set_seed()
+
     ep_rewards = []
 
     # we first freeze the model to get a 'full batch' of gradients
@@ -185,7 +213,7 @@ def main():
     for i_step in range(200):
         for j_episode in range(1):
             # could change it to a decreasing number?
-            state, _ = env.reset()
+            state, _ = env.reset(seed=33)
             ep_reward = 0
 
             while True:
@@ -200,8 +228,9 @@ def main():
             ep_rewards.append(ep_reward)
             finish_episode()
         finish_step(1)
+        time.sleep(4)
 
-        if i_step % 10 == 0:
+        if i_step % 1 == 0:
             print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))
     clear_output(True)
     plt.figure(figsize=(20,5))
