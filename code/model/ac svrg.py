@@ -60,9 +60,7 @@ class Value(nn.Module):
 actor = Actor()
 value = Value()
 
-actor_optimizer = optim.Adam(actor.parameters(), lr=3e-2)
-
-# value optimizer?
+# optimizer?
 
 value_pass_grad = [] # previous gradients of value model
 actor_pass_grad = [] # previous gradients of actor model
@@ -122,7 +120,7 @@ def finish_episode():
     latest_steps = []
 
 
-def finish_step(update_time=20, lr=3e-3):
+def finish_step(update_time=5, lr=1e-3):
     '''
     The procedure after a step.
     Now we can sample past episodes and do the corresponding updates.
@@ -184,9 +182,9 @@ def main():
 
     # we first freeze the model to get a 'full batch' of gradients
     # Then we use SVRG to update the model param multiple times
-    for i_step in range(300):
-        for j_episode in range(10):
-            # could change 10 to a decreasing number?
+    for i_step in range(200):
+        for j_episode in range(1):
+            # could change it to a decreasing number?
             state, _ = env.reset()
             ep_reward = 0
 
@@ -201,7 +199,7 @@ def main():
                     break
             ep_rewards.append(ep_reward)
             finish_episode()
-        finish_step()
+        finish_step(1)
 
         if i_step % 10 == 0:
             print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))
