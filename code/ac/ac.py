@@ -25,9 +25,6 @@ SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
 action_dim = env.action_space.n
 state_dim  = env.observation_space.shape[0]
 
-steps = []
-rewards = []
-
 random.seed(33)
 np.random.seed(33)
 os.environ['PYTHONHASHSEED'] = str(33)
@@ -64,8 +61,8 @@ class Value(nn.Module):
 actor = Actor()
 value = Value()
 
-actor_optimizer = optim.SGD(actor.parameters(), lr=3e-2)
-value_optimizer = optim.SGD(value.parameters(), lr=3e-2)
+actor_optimizer = optim.SGD(actor.parameters(), lr=1e-3)
+value_optimizer = optim.SGD(value.parameters(), lr=1e-3)
 
 def select_action(state):
     state = torch.from_numpy(state).float()
@@ -118,7 +115,17 @@ def finish_episode():
     rewards = []
     steps = []
 
-def main():
+def run_experiment():
+    actor = Actor()
+    value = Value()
+
+    actor_optimizer = optim.SGD(actor.parameters(), lr=1e-3)
+    value_optimizer = optim.SGD(value.parameters(), lr=1e-3)
+
+    steps = []
+    rewards = []
+
+    logging = False
     ep_rewards = []
 
     for i_episode in range(3000):
@@ -140,12 +147,12 @@ def main():
         ep_rewards.append(ep_reward)
         finish_episode()
 
-        if i_episode % 1 == 0:
+        if logging and i_episode % 50 == 0:
             print('Episode {}\tLast reward: {:.2f}'.format(i_episode, ep_reward))
-    clear_output(True)
-    plt.figure(figsize=(20,5))
-    plt.plot(ep_rewards)
-    plt.savefig('ac cartpole.png')
+    return ep_rewards
     
 if __name__ == '__main__':
-    main()
+    #TODO: refactor code to reset model for multiple iteration testing
+    all_rewards = []
+    for k in range(10):
+        all_rewards

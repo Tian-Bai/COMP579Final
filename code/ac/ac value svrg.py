@@ -14,6 +14,7 @@ from torchviz import make_dot
 import time
 import random
 import os
+import wandb
 
 # Cart Pole
 gamma = 0.95
@@ -73,9 +74,9 @@ actor = Actor()
 value = Value()
 
 # optimizer?
+actor_optimizer = optim.SGD(actor.parameters(), lr=1e-4)
 
-value_pass_grad = [] # previous gradients of value model
-actor_pass_grad = [] # previous gradients of actor model
+value_past_grad = [] # previous gradients of value model
 
 def select_action(state):
     state = torch.from_numpy(state).float()
@@ -123,9 +124,10 @@ def finish_episode():
 
     # remember the past gradients
     value_grad = [param.grad.clone() for param in value.parameters()]
-    value_pass_grad.append(value_grad)
-    actor_grad = [param.grad.clone() for param in actor.parameters()]
-    actor_pass_grad.append(actor_grad)
+    value_past_grad.append(value_grad)
+
+    # update directly for the policy
+    actor_optimizer.step()
 
     # remember the trajectories in a group
     rewards.append(latest_rewards)
@@ -141,29 +143,23 @@ def finish_step(update_time, lr=1e-4):
     The procedure after a step.
     Now we can sample past episodes and do the corresponding updates.
     '''
-    global value_pass_grad, actor_pass_grad, steps, rewards
+    global value_past_grad, steps, rewards
 
-    n = len(value_pass_grad)
+    n = len(value_past_grad)
 
     # we first calculate mu.
     value_mu = [torch.zeros_like(param.grad) for param in value.parameters()]
-    for p in value_pass_grad:
+    for p in value_past_grad:
         for i, g in enumerate(p):
             value_mu[i] += g / n
-    actor_mu = [torch.zeros_like(param.grad) for param in actor.parameters()]
-    for p in actor_pass_grad:
-        for i, g in enumerate(p):
-            actor_mu[i] += g / n
 
     for i_update in range(update_time):
         # pick a random previous episode t
         t = np.random.randint(0, n)
         value.zero_grad()
-        actor.zero_grad()
 
         # calculate the current gradient
         R = 0
-        policy_losses = []
         value_losses = []
         returns = deque()
         for r in rewards[t][::-1]:
@@ -173,31 +169,17 @@ def finish_step(update_time, lr=1e-4):
 
         for (s, v, a, log_p), R in zip(steps[t], returns):
             cur_val = value(s)
-            cur_advantage = torch.subtract(R, cur_val)
-            # need to detach to ignore gradient through value model
-            cur_advantage = cur_advantage.detach()
-            m = Categorical(actor(s))
-            cur_log_prob = m.log_prob(a)
             value_losses.append(F.smooth_l1_loss(cur_val, torch.tensor([R])))
-            policy_losses.append(-cur_log_prob * cur_advantage)
 
         value_loss = torch.stack(value_losses).sum()
         value_loss.backward()
 
-        policy_loss = torch.stack(policy_losses).sum()
-        policy_loss.backward()
-
         with torch.no_grad():
             for i, p in enumerate(value.parameters()):
-                new_p = p - lr * (value_mu[i] - value_pass_grad[t][i] + p.grad)
+                new_p = p - lr * (value_mu[i] - value_past_grad[t][i] + p.grad)
                 p.copy_(new_p)
 
-            for i, p in enumerate(actor.parameters()):
-                new_p = p - lr * (actor_mu[i] - actor_pass_grad[t][i] + p.grad)
-                p.copy_(new_p)
-    
-    value_pass_grad = []
-    actor_pass_grad = []
+    value_past_grad = []
     steps = []
     rewards = []
 
@@ -229,12 +211,12 @@ def main():
             finish_episode()
         finish_step(groupsize * 2)
 
-        if i_step % 1 == 0:
+        if i_step % 5 == 0:
             print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))
     clear_output(True)
     plt.figure(figsize=(20,5))
     plt.plot(ep_rewards)
-    plt.savefig('ac svrg cartpole.png')
+    plt.savefig('ac q svrg cartpole.png')
     
 if __name__ == '__main__':
     main()
