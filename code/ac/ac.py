@@ -25,6 +25,9 @@ SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
 action_dim = env.action_space.n
 state_dim  = env.observation_space.shape[0]
 
+steps = []
+rewards = []
+
 random.seed(33)
 np.random.seed(33)
 os.environ['PYTHONHASHSEED'] = str(33)
@@ -115,23 +118,11 @@ def finish_episode():
     rewards = []
     steps = []
 
-def run_experiment():
-    actor = Actor()
-    value = Value()
-
-    actor_optimizer = optim.SGD(actor.parameters(), lr=1e-3)
-    value_optimizer = optim.SGD(value.parameters(), lr=1e-3)
-
-    steps = []
-    rewards = []
-
-    logging = False
+def main():
     ep_rewards = []
 
     for i_episode in range(3000):
         state, _ = env.reset(seed=33)
-        
-        # tried using env.action_space.seed(), still not repeatable??
 
         ep_reward = 0
 
@@ -147,12 +138,12 @@ def run_experiment():
         ep_rewards.append(ep_reward)
         finish_episode()
 
-        if logging and i_episode % 50 == 0:
+        if i_episode % 5 == 0:
             print('Episode {}\tLast reward: {:.2f}'.format(i_episode, ep_reward))
-    return ep_rewards
+    clear_output(True)
+    plt.figure(figsize=(20,5))
+    plt.plot(ep_rewards)
+    plt.savefig('ac cartpole.png')
     
 if __name__ == '__main__':
-    #TODO: refactor code to reset model for multiple iteration testing
-    all_rewards = []
-    for k in range(10):
-        all_rewards
+    main()
