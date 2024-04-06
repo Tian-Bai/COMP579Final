@@ -203,13 +203,19 @@ def finish_step(update_time, lr=1e-4):
     rewards = []
 
 
-def main():
+def experiment(episodes=100, lr=1e-4):
+    global actor, value
+
+    # reset
+    actor = Actor()
+    value = Value()
+
     ep_rewards = []
     groupsize = 10
 
     # we first freeze the model to get a 'full batch' of gradients
     # Then we use SVRG to update the model param multiple times
-    for i_step in range(300):
+    for i_step in range(episodes):
         for j_episode in range(groupsize):
             # could change it to a decreasing number?
             state, _ = env.reset()
@@ -228,14 +234,25 @@ def main():
             # print(ep_reward)
             # time.sleep(3)
             finish_episode()
-        finish_step(groupsize * 2)
+        finish_step(groupsize * 2, lr)
 
-        if i_step % 1 == 0:
+        if i_step % 5 == 0:
             print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))
-    clear_output(True)
-    plt.figure(figsize=(20,5))
-    plt.plot(ep_rewards)
-    plt.savefig('ac svrg cartpole.png')
+        wandb.log(f"reward: {ep_reward}")
+    return ep_rewards
     
 if __name__ == '__main__':
-    main()
+    wandb.init(project="Comp579")
+    all_rewards = []
+    for k in range(10):
+        all_rewards.append(experiment())
+    np.savetxt("ac svrg 10 runs.txt", np.array(all_rewards))
+    
+    mean = np.mean(all_rewards, axis=0)
+    std = np.std(all_rewards, axis=0)
+    for m in mean:
+        wandb.log(f"reward: {m}")
+    plt.figure(figsize=(30, 15))
+    plt.plot(mean)
+    plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
+    plt.savefig('ac svrg 10 runs.png')

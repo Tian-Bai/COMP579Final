@@ -13,10 +13,12 @@ from torch.distributions import Categorical
 import random
 import os
 import time
+import wandb
 
 # Cart Pole
 
 gamma = 0.95
+debug = False
 
 env = gym.make('CartPole-v1')
 eps = np.finfo(np.float32).eps.item()
@@ -28,12 +30,13 @@ state_dim  = env.observation_space.shape[0]
 steps = []
 rewards = []
 
-random.seed(33)
-np.random.seed(33)
-os.environ['PYTHONHASHSEED'] = str(33)
-torch.manual_seed(33)
-torch.cuda.manual_seed(33)
-torch.backends.cudnn.deterministic = True
+if debug:
+    random.seed(33)
+    np.random.seed(33)
+    os.environ['PYTHONHASHSEED'] = str(33)
+    torch.manual_seed(33)
+    torch.cuda.manual_seed(33)
+    torch.backends.cudnn.deterministic = True
     
 class Actor(nn.Module):
     def __init__(self, hidden_dim=16):
@@ -118,10 +121,18 @@ def finish_episode():
     rewards = []
     steps = []
 
-def main():
+def experiment(episodes=1000, lr=1e-3):
+    global actor, value, actor_optimizer, value_optimizer
+
+    # reset
+    actor = Actor()
+    value = Value()
+    actor_optimizer = optim.SGD(actor.parameters(), lr=lr)
+    value_optimizer = optim.SGD(value.parameters(), lr=lr)
+
     ep_rewards = []
 
-    for i_episode in range(3000):
+    for i_episode in range(episodes):
         state, _ = env.reset(seed=33)
 
         ep_reward = 0
@@ -140,10 +151,20 @@ def main():
 
         if i_episode % 5 == 0:
             print('Episode {}\tLast reward: {:.2f}'.format(i_episode, ep_reward))
-    clear_output(True)
-    plt.figure(figsize=(20,5))
-    plt.plot(ep_rewards)
-    plt.savefig('ac cartpole.png')
+    return ep_rewards
     
 if __name__ == '__main__':
-    main()
+    wandb.init(project="Comp579")
+    all_rewards = []
+    for k in range(10):
+        all_rewards.append(experiment())
+    np.savetxt("ac 10 runs.txt", np.array(all_rewards))
+    
+    mean = np.mean(all_rewards, axis=0)
+    std = np.std(all_rewards, axis=0)
+    for m in mean:
+        wandb.log(f"reward: {m}")
+    plt.figure(figsize=(30, 15))
+    plt.plot(mean)
+    plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
+    plt.savefig('ac 10 runs.png')
