@@ -81,7 +81,7 @@ class Agent():
 
         m = Categorical(prob)
         action = m.sample()
-        self.steps.append(SavedAction(m.log_prob(action), val))
+        self.latest_steps.append(SavedAction(state, val, action, m.log_prob(action)))
 
         return action.item()
     
@@ -176,7 +176,7 @@ class Agent():
         self.rewards = []
 
 
-def experiment(episodes=100, lr=LR):
+def experiment(episodes=50, lr=LR):
     agent = Agent()
 
     ep_rewards = []
