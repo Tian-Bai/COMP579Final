@@ -18,17 +18,15 @@ import wandb
 # Cart Pole
 
 gamma = 0.95
+LR = 1e-4
 debug = False
 
-env = gym.make('CartPole-v1')
+env = gym.make('Acrobot-v1')
 eps = np.finfo(np.float32).eps.item()
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
 
 action_dim = env.action_space.n
 state_dim  = env.observation_space.shape[0]
-
-steps = []
-rewards = []
 
 if debug:
     random.seed(33)
@@ -64,72 +62,66 @@ class Value(nn.Module):
         value = self.output(outs)
         return value
 
-actor = Actor()
-value = Value()
+class Agent():
+    def __init__(self, lr=LR):
+        self.actor = Actor()
+        self.value = Value()
+        self.actor_optimizer = optim.SGD(self.actor.parameters(), lr=LR)
+        self.value_optimizer = optim.SGD(self.value.parameters(), lr=LR)
 
-actor_optimizer = optim.SGD(actor.parameters(), lr=1e-3)
-value_optimizer = optim.SGD(value.parameters(), lr=1e-3)
+        self.steps = []
+        self.rewards = []
 
-def select_action(state):
-    state = torch.from_numpy(state).float()
-    prob, val = actor(state), value(state)
+    def select_action(self, state):
+        state = torch.from_numpy(state).float()
+        prob, val = self.actor(state), self.value(state)
 
-    m = Categorical(prob)
-    action = m.sample()
-    steps.append(SavedAction(m.log_prob(action), val))
+        m = Categorical(prob)
+        action = m.sample()
+        self.steps.append(SavedAction(m.log_prob(action), val))
 
-    return action.item()
+        return action.item()
 
+    def finish_episode(self):
+        R = 0
+        policy_losses = [] # list to save actor (policy) loss
+        value_losses = [] # list to save critic (value) loss
+        returns = deque()
 
-def finish_episode():
-    R = 0
-    policy_losses = [] # list to save actor (policy) loss
-    value_losses = [] # list to save critic (value) loss
-    returns = deque()
+        # calculate the true value using rewards returned from the environment
+        for r in self.rewards[::-1]:
+            # calculate the discounted value
+            R = r + gamma * R
+            returns.appendleft(R)
+        returns = torch.tensor(returns)
 
-    global rewards, steps
+        # normalization deleted
 
-    # calculate the true value using rewards returned from the environment
-    for r in rewards[::-1]:
-        # calculate the discounted value
-        R = r + gamma * R
-        returns.appendleft(R)
-    returns = torch.tensor(returns)
+        for (log_prob, val), R in zip(self.steps, returns):
+            advantage = R - val.item()
+            policy_losses.append(-log_prob * advantage)
+            value_losses.append(F.smooth_l1_loss(val, torch.tensor([R])))
 
-    # normalization deleted
+        # reset gradients
+        self.actor_optimizer.zero_grad()
+        self.value_optimizer.zero_grad()
 
-    for (log_prob, val), R in zip(steps, returns):
-        advantage = R - val.item()
-        policy_losses.append(-log_prob * advantage)
-        value_losses.append(F.smooth_l1_loss(val, torch.tensor([R])))
+        # sum up all the values of policy_losses and value_losses
+        actor_loss = torch.stack(policy_losses).sum()
+        value_loss = torch.stack(value_losses).sum()
 
-    # reset gradients
-    actor_optimizer.zero_grad()
-    value_optimizer.zero_grad()
+        # perform backprop
+        actor_loss.backward()
+        value_loss.backward()
 
-    # sum up all the values of policy_losses and value_losses
-    actor_loss = torch.stack(policy_losses).sum()
-    value_loss = torch.stack(value_losses).sum()
+        self.actor_optimizer.step()
+        self.value_optimizer.step()
 
-    # perform backprop
-    actor_loss.backward()
-    value_loss.backward()
+        self.rewards = []
+        self.steps = []
 
-    actor_optimizer.step()
-    value_optimizer.step()
-
-    rewards = []
-    steps = []
-
-def experiment(episodes=1000, lr=1e-3):
-    global actor, value, actor_optimizer, value_optimizer
-
-    # reset
-    actor = Actor()
-    value = Value()
-    actor_optimizer = optim.SGD(actor.parameters(), lr=lr)
-    value_optimizer = optim.SGD(value.parameters(), lr=lr)
-
+def experiment(episodes=500, lr=LR):
+    agent = Agent()
     ep_rewards = []
 
     for i_episode in range(episodes):
@@ -138,33 +130,33 @@ def experiment(episodes=1000, lr=1e-3):
         ep_reward = 0
 
         while True:
-            action = select_action(state)
+            action = agent.select_action(state)
 
             state, reward, term, trunc, _ = env.step(action)
             done = term or trunc
-            rewards.append(reward)
+            agent.rewards.append(reward)
             ep_reward += reward
             if done:
                 break
         ep_rewards.append(ep_reward)
-        finish_episode()
+        agent.finish_episode()
 
         if i_episode % 5 == 0:
             print('Episode {}\tLast reward: {:.2f}'.format(i_episode, ep_reward))
     return ep_rewards
     
 if __name__ == '__main__':
-    wandb.init(project="Comp579")
+    # wandb.init(project="Comp579")
     all_rewards = []
     for k in range(10):
         all_rewards.append(experiment())
-    np.savetxt("ac 10 runs.txt", np.array(all_rewards))
+    np.savetxt("A ac 10 runs.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
-    for m in mean:
-        wandb.log(f"reward: {m}")
+    # for m in mean:
+    #     wandb.log(f"reward: {m}")
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig('ac 10 runs.png')
+    plt.savefig('A ac 10 runs.png')
