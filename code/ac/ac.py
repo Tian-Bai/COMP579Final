@@ -14,14 +14,22 @@ import random
 import os
 import time
 import wandb
+import math
 
 # Cart Pole
 
 gamma = 0.95
-LR = 1e-4
+
+taskname = 'CartPole-v1'
+# taskname = 'Acrobat-v1'
+if taskname == 'Acrobat-v1':
+    LR = 1e-4
+elif taskname == 'CartPole-v1':
+    LR = 1e-3
+
 debug = False
 
-env = gym.make('Acrobot-v1')
+env = gym.make(taskname)
 eps = np.finfo(np.float32).eps.item()
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
 
@@ -150,7 +158,7 @@ if __name__ == '__main__':
     all_rewards = []
     for k in range(10):
         all_rewards.append(experiment())
-    np.savetxt("A ac 10 runs.txt", np.array(all_rewards))
+    np.savetxt(f"ac {taskname}.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -159,4 +167,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig('A ac 10 runs.png')
+    plt.savefig(f'A ac {taskname}.png')

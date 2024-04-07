@@ -16,9 +16,24 @@ import random
 import os
 import wandb
 
+'''
+To avoid reruning the code for multiple times, 
+we save the rewards of different models as .txt files and generate the plot here.
+'''
+
+task = 'acrobot' # cartpole, acrobot
+algo = 'ac' # ac, ac value svrg
+groupsize = 20
+update = 40
+
+if task == 'acrobot':
+    LR = 1e-4
+elif task == 'cartpole':
+    LR = 1e-3
+
 if __name__ == '__main__':
-    ac = np.loadtxt("ac 10 runs.txt")
-    ac_value_svrg = np.loadtxt("ac value svrg 10 runs.txt")
+    ac = np.loadtxt(f"data\\{task}\\ac\\ac {task}.txt")
+    ac_value_svrg = np.loadtxt(f"data\\{task}\\groupsize={groupsize}\\ac value svrg {groupsize} {update} {task}.txt")
     plt.figure(figsize=(10, 5))
     
     ac_mean = np.mean(ac, axis=0)
@@ -33,6 +48,6 @@ if __name__ == '__main__':
     plt.plot(ac_value_mean, label="SVRG")
     plt.fill_between(range(len(ac_value_mean)), ac_value_mean + ac_value_std, ac_value_mean - ac_value_std, alpha=0.3, color='red')
     
-    plt.xlabel("AC vs. AC with SVRG on function value approximation on Cart Pole task, lr = 0.001")
+    plt.xlabel(f"AC vs. AC with SVRG on function value approximation (group size {groupsize}) on {task.capitalize()} task, lr = {LR}")
     plt.legend()
-    plt.savefig("ac vs svrg.png")
+    plt.savefig(f"ac vs svrg {task} groupsize={groupsize}.png")

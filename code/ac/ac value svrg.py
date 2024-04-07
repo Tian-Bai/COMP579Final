@@ -15,12 +15,19 @@ import time
 import random
 import os
 import wandb
+import math
 
 # Cart Pole
 gamma = 0.95
-LR = 1e-4
 
-env = gym.make('Acrobot-v1')
+# taskname = 'CartPole-v1'
+taskname = 'Acrobot-v1'
+if taskname == 'Acrobot-v1':
+    LR = 1e-4
+elif taskname == 'CartPole-v1':
+    LR = 1e-3
+
+env = gym.make(taskname)
 eps = np.finfo(np.float32).eps.item()
 
 # SavedAction works as a replay buffer
@@ -176,11 +183,10 @@ class Agent():
         self.rewards = []
 
 
-def experiment(episodes=50, lr=LR):
+def experiment(episodes=50, groupsize=20, update=30, lr=LR):
     agent = Agent()
 
     ep_rewards = []
-    groupsize = 10
 
     # we first freeze the model to get a 'full batch' of gradients
     # Then we use SVRG to update the model param multiple times
@@ -201,7 +207,7 @@ def experiment(episodes=50, lr=LR):
                     break
             ep_rewards.append(ep_reward)
             agent.finish_episode()
-        agent.finish_step(groupsize * 2, lr)
+        agent.finish_step(update, lr)
 
         if i_step % 5 == 0:
             print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))
@@ -210,9 +216,14 @@ def experiment(episodes=50, lr=LR):
 if __name__ == '__main__':
     # wandb.init(project="Comp579")
     all_rewards = []
+    total_episodes = 500
+    groupsize = 20
+    episodes = int(math.ceil(total_episodes / groupsize))
+    update = 40
+
     for k in range(10):
-        all_rewards.append(experiment())
-    np.savetxt("A ac value svrg 10 runs.txt", np.array(all_rewards))
+        all_rewards.append(experiment(episodes, groupsize, update))
+    np.savetxt(f"ac value svrg {taskname} {groupsize} {update}.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -221,4 +232,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig('A ac value svrg 10 runs.png')
+    plt.savefig(f'ac value svrg {taskname} {groupsize} {update}.png')

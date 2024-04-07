@@ -18,9 +18,15 @@ import wandb
 
 # Cart Pole
 gamma = 0.95
-LR = 1e-4
 
-env = gym.make('CartPole-v1')
+taskname = 'CartPole-v1'
+# taskname = 'Acrobat-v1'
+if taskname == 'Acrobat-v1':
+    LR = 1e-4
+elif taskname == 'CartPole-v1':
+    LR = 1e-3
+
+env = gym.make(taskname)
 eps = np.finfo(np.float32).eps.item()
 
 # SavedAction works as a replay buffer
@@ -235,7 +241,7 @@ if __name__ == '__main__':
     all_rewards = []
     for k in range(10):
         all_rewards.append(experiment())
-    np.savetxt("ac svrg 10 runs.txt", np.array(all_rewards))
+    np.savetxt(f"ac svrg {taskname}.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -244,4 +250,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig('ac svrg 10 runs.png')
+    plt.savefig(f'ac svrg {taskname}.png')
