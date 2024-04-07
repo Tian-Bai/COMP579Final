@@ -23,9 +23,11 @@ gamma = 0.95
 # taskname = 'CartPole-v1'
 taskname = 'Acrobot-v1'
 if taskname == 'Acrobot-v1':
-    LR = 1e-4
-elif taskname == 'CartPole-v1':
+    displayname = 'acrobot'
     LR = 1e-3
+elif taskname == 'CartPole-v1':
+    displayname = 'cartpole'
+    LR = 1e-2
 
 env = gym.make(taskname)
 eps = np.finfo(np.float32).eps.item()
@@ -223,7 +225,7 @@ if __name__ == '__main__':
 
     for k in range(10):
         all_rewards.append(experiment(episodes, groupsize, update))
-    np.savetxt(f"ac value svrg {taskname} {groupsize} {update}.txt", np.array(all_rewards))
+    np.savetxt(f"ac value svrg {displayname} {groupsize} {update}.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -232,4 +234,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'ac value svrg {taskname} {groupsize} {update}.png')
+    plt.savefig(f'ac value svrg {displayname} {groupsize} {update}.png')

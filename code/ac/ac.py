@@ -20,12 +20,14 @@ import math
 
 gamma = 0.95
 
-taskname = 'CartPole-v1'
-# taskname = 'Acrobot-v1'
+# taskname = 'CartPole-v1'
+taskname = 'Acrobot-v1'
 if taskname == 'Acrobot-v1':
-    LR = 1e-4
-elif taskname == 'CartPole-v1':
+    displayname = 'acrobot'
     LR = 1e-3
+elif taskname == 'CartPole-v1':
+    displayname = 'cartpole'
+    LR = 1e-2
 
 debug = False
 
@@ -158,7 +160,7 @@ if __name__ == '__main__':
     all_rewards = []
     for k in range(10):
         all_rewards.append(experiment())
-    np.savetxt(f"ac {taskname}.txt", np.array(all_rewards))
+    np.savetxt(f"ac {displayname} lr={LR}.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -167,4 +169,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'A ac {taskname}.png')
+    plt.savefig(f'ac {displayname} lr={LR}.png')
