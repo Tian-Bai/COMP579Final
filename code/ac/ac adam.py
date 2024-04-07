@@ -74,8 +74,8 @@ class Agent():
     def __init__(self, lr=LR):
         self.actor = Actor()
         self.value = Value()
-        self.actor_optimizer = optim.SGD(self.actor.parameters(), lr=LR)
-        self.value_optimizer = optim.SGD(self.value.parameters(), lr=LR)
+        self.actor_optimizer = optim.Adam(self.actor.parameters(), lr=LR)
+        self.value_optimizer = optim.Adam(self.value.parameters(), lr=LR)
 
         self.steps = []
         self.rewards = []
@@ -128,7 +128,7 @@ class Agent():
         self.rewards = []
         self.steps = []
 
-def experiment(episodes=500, lr=LR):
+def experiment(episodes=1000, lr=LR):
     agent = Agent()
     ep_rewards = []
 
@@ -157,8 +157,8 @@ if __name__ == '__main__':
     # wandb.init(project="Comp579")
     all_rewards = []
     for k in range(10):
-        all_rewards.append(experiment())
-    np.savetxt(f"ac {taskname}.txt", np.array(all_rewards))
+        all_rewards.append(experiment(1000))
+    np.savetxt(f"ac ADAM {taskname}.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -167,4 +167,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'A ac {taskname}.png')
+    plt.savefig(f'ac ADAM {taskname}.png')
