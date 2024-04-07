@@ -21,20 +21,17 @@ To avoid reruning the code for multiple times,
 we save the rewards of different models as .txt files and generate the plot here.
 '''
 
-task = 'cartpole' # cartpole, acrobot
+task = 'acrobot' # cartpole, acrobot
 algo = 'ac' # ac, ac value svrg
 groupsize = 20
-update = 30
-
-if task == 'acrobot':
-    LR = 1e-4
-elif task == 'cartpole':
-    LR = 1e-3
+update = 40
+runs = 10
+LR = '1e-4'
 
 if __name__ == '__main__':
-    ac = np.loadtxt(f"data\\{task}\\ac\\ac {task}.txt")
-    adam = np.loadtxt(f"data\\{task}\\ADAM\\ac ADAM {task}.txt")
-    ac_value_svrg = np.loadtxt(f"data\\{task}\\groupsize={groupsize}\\ac value svrg {groupsize} {update} {task}.txt")
+    ac = np.loadtxt(f"data\\{task}\\lr={LR}\\ac\\ac {task} {runs} lr={LR}.txt")
+    adam = np.loadtxt(f"data\\{task}\\lr={LR}\\ADAM\\ac ADAM {task} {runs} lr={LR}.txt")
+    ac_value_svrg = np.loadtxt(f"data\\{task}\\lr={LR}\\groupsize={groupsize}\\ac value svrg {task} {groupsize} {update} {runs} lr={LR}.txt")
     plt.figure(figsize=(10, 5))
 
     ac_mean = np.mean(ac, axis=0)
@@ -57,4 +54,4 @@ if __name__ == '__main__':
     
     plt.xlabel(f"AC vs. AC with SVRG on function value approximation (group size {groupsize}) on {task.capitalize()} task, lr = {LR}")
     plt.legend()
-    plt.savefig(f"ac vs svrg {task} groupsize={groupsize} vs ADAM.png")
+    plt.savefig(f"ac vs svrg {task} groupsize={groupsize} vs ADAM lr={LR}.png")

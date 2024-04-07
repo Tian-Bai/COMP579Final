@@ -1,9 +1,7 @@
 import argparse
-import gym
+import gymnasium as gym
 import numpy as np
-from itertools import count
 from collections import namedtuple, deque
-from IPython.display import clear_output
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -13,30 +11,33 @@ from torch.distributions import Categorical
 import random
 import os
 import time
-import wandb
 import math
+from multiprocessing import Pool
+
+parser = argparse.ArgumentParser()
+parser.add_argument('task', action='store')
+parser.add_argument('LR', action='store', type=float)
+parser.add_argument('runs', action='store', type=int)
+args = parser.parse_args()
 
 # Cart Pole
-
 gamma = 0.95
 
-# taskname = 'CartPole-v1'
-taskname = 'Acrobot-v1'
-if taskname == 'Acrobot-v1':
-    displayname = 'acrobot'
-    LR = 1e-3
-elif taskname == 'CartPole-v1':
-    displayname = 'cartpole'
-    LR = 1e-2
+if args.task == 'acrobot':
+    taskname = 'Acrobot-v1'
+elif args.task == 'cartpole':
+    taskname = 'CartPole-v1'
+LR = args.LR
 
 debug = False
 
-env = gym.make(taskname)
+sample_env = gym.make(taskname)
 eps = np.finfo(np.float32).eps.item()
 SavedAction = namedtuple('SavedAction', ['log_prob', 'value'])
 
-action_dim = env.action_space.n
-state_dim  = env.observation_space.shape[0]
+action_dim = sample_env.action_space.n
+state_dim  = sample_env.observation_space.shape[0]
+del sample_env
 
 if debug:
     random.seed(33)
@@ -81,6 +82,8 @@ class Agent():
 
         self.steps = []
         self.rewards = []
+
+        self.env = gym.make(taskname)
 
     def select_action(self, state):
         state = torch.from_numpy(state).float()
@@ -135,14 +138,14 @@ def experiment(episodes=1000, lr=LR):
     ep_rewards = []
 
     for i_episode in range(episodes):
-        state, _ = env.reset(seed=33)
+        state, _ = agent.env.reset(seed=33)
 
         ep_reward = 0
 
         while True:
             action = agent.select_action(state)
 
-            state, reward, term, trunc, _ = env.step(action)
+            state, reward, term, trunc, _ = agent.env.step(action)
             done = term or trunc
             agent.rewards.append(reward)
             ep_reward += reward
@@ -157,10 +160,13 @@ def experiment(episodes=1000, lr=LR):
     
 if __name__ == '__main__':
     # wandb.init(project="Comp579")
+    runs = args.runs
     all_rewards = []
-    for k in range(10):
-        all_rewards.append(experiment(1000))
-    np.savetxt(f"ac ADAM {displayname} lr={LR}.txt", np.array(all_rewards))
+    
+    with Pool() as p:
+        all_rewards = p.starmap(experiment, [(1000, LR)] * runs)
+
+    np.savetxt(f"ac ADAM {args.task} {runs} lr={LR}.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -169,4 +175,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'ac ADAM {displayname} lr={LR}.png')
+    plt.savefig(f'ac ADAM {args.task} {runs} lr={LR}.png')

@@ -1,9 +1,7 @@
 import argparse
-import gym
+import gymnasium as gym
 import numpy as np
-from itertools import count
 from collections import namedtuple, deque
-from IPython.display import clear_output
 import matplotlib.pyplot as plt
 import torch
 import torch.nn as nn
@@ -14,29 +12,35 @@ from torchviz import make_dot
 import time
 import random
 import os
-import wandb
 import math
+from multiprocessing import Pool
+
+parser = argparse.ArgumentParser()
+parser.add_argument('task', action='store')
+parser.add_argument('LR', action='store', type=float)
+parser.add_argument('groupsize', action='store', type=int)
+parser.add_argument('update', action='store', type=int)
+parser.add_argument('runs', action='store', type=int)
+args = parser.parse_args()
 
 # Cart Pole
 gamma = 0.95
 
-# taskname = 'CartPole-v1'
-taskname = 'Acrobot-v1'
-if taskname == 'Acrobot-v1':
-    displayname = 'acrobot'
-    LR = 1e-3
-elif taskname == 'CartPole-v1':
-    displayname = 'cartpole'
-    LR = 1e-2
+if args.task == 'acrobot':
+    taskname = 'Acrobot-v1'
+elif args.task == 'cartpole':
+    taskname = 'CartPole-v1'
+LR = args.LR
 
-env = gym.make(taskname)
+sample_env = gym.make(taskname)
 eps = np.finfo(np.float32).eps.item()
 
 # SavedAction works as a replay buffer
 SavedAction = namedtuple('SavedAction', ['s', 'v', 'a', 'log_p'])
 
-action_dim = env.action_space.n
-state_dim  = env.observation_space.shape[0]
+action_dim = sample_env.action_space.n
+state_dim  = sample_env.observation_space.shape[0]
+del sample_env
 
 random.seed(33)
 np.random.seed(33)
@@ -83,6 +87,8 @@ class Agent():
         self.latest_steps = []
         self.latest_rewards = []
         self.value_past_grad = []
+
+        self.env = gym.make(taskname)
 
     def select_action(self, state):
         state = torch.from_numpy(state).float()
@@ -195,13 +201,13 @@ def experiment(episodes=50, groupsize=20, update=30, lr=LR):
     for i_step in range(episodes):
         for j_episode in range(groupsize):
             # could change it to a decreasing number?
-            state, _ = env.reset()
+            state, _ = agent.env.reset()
             ep_reward = 0
 
             while True:
                 action = agent.select_action(state)
 
-                state, reward, term, trunc, _ = env.step(action)
+                state, reward, term, trunc, _ = agent.env.step(action)
                 done = term or trunc
                 agent.latest_rewards.append(reward)
                 ep_reward += reward
@@ -217,15 +223,17 @@ def experiment(episodes=50, groupsize=20, update=30, lr=LR):
     
 if __name__ == '__main__':
     # wandb.init(project="Comp579")
+    runs = args.runs
     all_rewards = []
-    total_episodes = 500
-    groupsize = 20
+    total_episodes = 1000
+    groupsize = args.groupsize
     episodes = int(math.ceil(total_episodes / groupsize))
-    update = 40
+    update = args.update
 
-    for k in range(10):
-        all_rewards.append(experiment(episodes, groupsize, update))
-    np.savetxt(f"ac value svrg {displayname} {groupsize} {update}.txt", np.array(all_rewards))
+    with Pool(processes=12) as p:
+        all_rewards = p.starmap(experiment, [(episodes, groupsize, update, LR)] * runs)
+
+    np.savetxt(f"ac value svrg {args.task} {groupsize} {update} {runs} lr={LR}.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -234,4 +242,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'ac value svrg {displayname} {groupsize} {update}.png')
+    plt.savefig(f'ac value svrg {args.task} {groupsize} {update} {runs} lr={LR}.png')
