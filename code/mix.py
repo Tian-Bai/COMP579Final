@@ -21,12 +21,12 @@ To avoid reruning the code for multiple times,
 we save the rewards of different models as .txt files and generate the plot here.
 '''
 
-task = 'acrobot' # cartpole, acrobot
+task = 'cartpole' # cartpole, acrobot
 algo = 'ac' # ac, ac value svrg
 groupsize = 20
 update = 40
 runs = 10
-LR = '1e-4'
+LR = '1e-3'
 
 if __name__ == '__main__':
     ac = np.loadtxt(f"data\\{task}\\lr={LR}\\ac\\ac {task} {runs} lr={LR}.txt")
