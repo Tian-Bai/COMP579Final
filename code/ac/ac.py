@@ -17,6 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('task', action='store')
 parser.add_argument('LR', action='store', type=float)
 parser.add_argument('runs', action='store', type=int)
+parser.add_argument('-e', dest='episodes', action='store', type=int, default=1000)
 args = parser.parse_args()
 
 gamma = 0.95
@@ -167,9 +168,10 @@ if __name__ == '__main__':
     # wandb.init(project="Comp579")
     runs = args.runs
     all_rewards = []
+    episodes = args.episodes
 
     with Pool() as p:
-        all_rewards = p.starmap(experiment, [(1000, LR)] * runs)
+        all_rewards = p.starmap(experiment, [(episodes, LR)] * runs)
 
     np.savetxt(f"ac {args.task} {runs} lr={LR}.txt", np.array(all_rewards))
     

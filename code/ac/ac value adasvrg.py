@@ -21,6 +21,7 @@ parser.add_argument('LR', action='store', type=float)
 parser.add_argument('groupsize', action='store', type=int)
 parser.add_argument('update', action='store', type=int)
 parser.add_argument('runs', action='store', type=int)
+parser.add_argument('-e', dest='episodes', action='store', type=int, default=1000)
 args = parser.parse_args()
 
 gamma = 0.95
@@ -94,15 +95,6 @@ class Agent():
         self.latest_rewards = []
         self.value_past_grad = []
 
-        # for our ADAM optimizer
-        self.m = [torch.zeros_like(param) for param in self.value.parameters()]
-        self.v = [torch.zeros_like(param) for param in self.value.parameters()]
-
-        # for numerical stability of ADAM
-        self.beta1 = beta1
-        self.beta2 = beta2
-        self.epsilon = 1e-8
-
         self.env = gym.make(taskname)
 
     def select_action(self, state):
@@ -162,7 +154,7 @@ class Agent():
         self.latest_rewards = []
         self.latest_steps = []
 
-    #TODO: change update to ADAM style
+    #TODO: change update to Adagrad style
     def finish_step(self, update_time, lr=LR):
         '''
         The procedure after a step.
@@ -175,6 +167,9 @@ class Agent():
         for p in self.value_past_grad:
             for i, g in enumerate(p):
                 value_mu[i] += g / n
+
+        # for Adagrad
+        G = 0
 
         for i_update in range(update_time):
             # pick a random previous episode t
@@ -200,14 +195,14 @@ class Agent():
             with torch.no_grad():
                 update_step = [value_mu[i] - self.value_past_grad[t][i] + p.grad for i, p in enumerate(self.value.parameters())]
 
+                # collect norm and update G
+                squares = 0
+                for g in update_step:
+                    squares = squares + torch.square(g).sum().item()
+                G = G + np.sqrt(squares)
+
                 for i, p in enumerate(self.value.parameters()):
-                    self.m[i] = self.beta1 * self.m[i] + (1 - self.beta1) * update_step[i]
-                    self.v[i] = self.beta2 * self.v[i] + (1 - self.beta2) * torch.square(update_step[i])
-
-                    m_hat = self.m[i] / (1 - self.beta1 ** (i_update + 1))
-                    v_hat = self.v[i] / (1 - self.beta2 ** (i_update + 1))
-
-                    new_p = p - lr * (m_hat / (v_hat + torch.ones_like(v_hat) * self.epsilon))
+                    new_p = p - lr * update_step[i] / np.sqrt(G)
                     p.copy_(new_p)
 
         self.value_past_grad = []
@@ -249,7 +244,7 @@ if __name__ == '__main__':
     # wandb.init(project="Comp579")
     runs = args.runs
     all_rewards = []
-    total_episodes = 1000
+    total_episodes = args.episodes
     groupsize = args.groupsize
     episodes = int(math.ceil(total_episodes / groupsize))
     update = args.update
@@ -257,7 +252,7 @@ if __name__ == '__main__':
     with Pool(processes=12) as p:
         all_rewards = p.starmap(experiment, [(episodes, groupsize, update, LR)] * runs)
 
-    np.savetxt(f"ac ADAM value svrg {args.task} {groupsize} {update} {runs} lr={LR}.txt", np.array(all_rewards))
+    np.savetxt(f"ac value adasvrg {args.task} {groupsize} {update} {runs} lr={LR}.txt", np.array(all_rewards))
     
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -266,4 +261,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'ac ADAM value svrg {args.task} {groupsize} {update} {runs} lr={LR}.png')
+    plt.savefig(f'ac value adasvrg {args.task} {groupsize} {update} {runs} lr={LR}.png')

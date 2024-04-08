@@ -21,17 +21,19 @@ To avoid reruning the code for multiple times,
 we save the rewards of different models as .txt files and generate the plot here.
 '''
 
-task = 'cartpole' # cartpole, acrobot
-algo = 'ac' # ac, ac value svrg
+task = 'acrobot' # cartpole, acrobot
 groupsize = 20
+
+svrggroupsize = 20
 update = 40
 runs = 10
-LR = '1e-2'
+LR = '1e-4'
 
 if __name__ == '__main__':
     ac = np.loadtxt(f"data\\{task}\\lr={LR}\\ac\\ac {task} {runs} lr={LR}.txt")
     adam = np.loadtxt(f"data\\{task}\\lr={LR}\\ADAM\\ac ADAM {task} {runs} lr={LR}.txt")
     ac_value_svrg = np.loadtxt(f"data\\{task}\\lr={LR}\\groupsize={groupsize}\\ac value svrg {task} {groupsize} {update} {runs} lr={LR}.txt")
+    ac_value_adasvrg = np.loadtxt(f"data\\{task}\\lr={LR}\\adasvrg groupsize={svrggroupsize}\\ac value adasvrg {task} {svrggroupsize} {update} {runs} lr={LR}.txt")
     plt.figure(figsize=(10, 5))
 
     ac_mean = np.mean(ac, axis=0)
@@ -43,7 +45,10 @@ if __name__ == '__main__':
     ac_value_mean = np.mean(ac_value_svrg, axis=0)
     ac_value_std = np.std(ac_value_svrg, axis=0)
 
-    plt.plot(ac_mean, label="AC")
+    ac_value_adasvrg_mean = np.mean(ac_value_adasvrg, axis=0)
+    ac_value_adasvrg_std = np.std(ac_value_adasvrg, axis=0)
+
+    plt.plot(ac_mean, label="SGD")
     plt.fill_between(range(len(ac_mean)), ac_mean + ac_std, ac_mean - ac_std, alpha=0.3)
 
     plt.plot(adam_mean, label="Adam")
@@ -52,6 +57,9 @@ if __name__ == '__main__':
     plt.plot(ac_value_mean, label="SVRG")
     plt.fill_between(range(len(ac_value_mean)), ac_value_mean + ac_value_std, ac_value_mean - ac_value_std, alpha=0.3)
     
-    plt.xlabel(f"AC vs. AC with SVRG on function value approximation (group size {groupsize}) on {task.capitalize()} task, lr = {LR}")
+    plt.plot(ac_value_adasvrg_mean, label="AdaSVRG")
+    plt.fill_between(range(len(ac_value_adasvrg_mean)), ac_value_adasvrg_mean + ac_value_adasvrg_std, ac_value_adasvrg_mean - ac_value_adasvrg_std, alpha=0.3)
+
+    plt.xlabel(f"Comparison of algorithms on function value approximation (group size {groupsize}) on {task.capitalize()} task, lr = {LR}")
     plt.legend()
-    plt.savefig(f"ac vs svrg {task} groupsize={groupsize} vs ADAM lr={LR}.png")
+    plt.savefig(f"ac vs svrg {task} groupsize={groupsize} vs ADAM vs AdaSVRG lr={LR}.png")

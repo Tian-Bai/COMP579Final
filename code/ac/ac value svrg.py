@@ -21,6 +21,7 @@ parser.add_argument('LR', action='store', type=float)
 parser.add_argument('groupsize', action='store', type=int)
 parser.add_argument('update', action='store', type=int)
 parser.add_argument('runs', action='store', type=int)
+parser.add_argument('-e', dest='episodes', action='store', type=int, default=1000)
 args = parser.parse_args()
 
 gamma = 0.95
@@ -231,7 +232,7 @@ if __name__ == '__main__':
     # wandb.init(project="Comp579")
     runs = args.runs
     all_rewards = []
-    total_episodes = 1000
+    total_episodes = args.episodes
     groupsize = args.groupsize
     episodes = int(math.ceil(total_episodes / groupsize))
     update = args.update
