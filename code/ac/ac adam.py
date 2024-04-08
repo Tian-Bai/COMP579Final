@@ -20,13 +20,19 @@ parser.add_argument('LR', action='store', type=float)
 parser.add_argument('runs', action='store', type=int)
 args = parser.parse_args()
 
-# Cart Pole
 gamma = 0.95
+
+CONTINUOUS_ACTION = False
 
 if args.task == 'acrobot':
     taskname = 'Acrobot-v1'
 elif args.task == 'cartpole':
     taskname = 'CartPole-v1'
+elif args.task == 'mountaincar':
+    taskname = 'MountainCar-v0'
+elif args.task == 'pendulum':
+    taskname = 'Pendulum-v1'
+    CONTINUOUS_ACTION = True
 LR = args.LR
 
 debug = False

@@ -153,6 +153,7 @@ class Agent():
         self.latest_rewards = []
         self.latest_steps = []
 
+    #TODO: change update to ADAM style
     def finish_step(self, update_time, lr=LR):
         '''
         The procedure after a step.

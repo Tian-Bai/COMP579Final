@@ -26,7 +26,7 @@ algo = 'ac' # ac, ac value svrg
 groupsize = 20
 update = 40
 runs = 10
-LR = '1e-3'
+LR = '1e-2'
 
 if __name__ == '__main__':
     ac = np.loadtxt(f"data\\{task}\\lr={LR}\\ac\\ac {task} {runs} lr={LR}.txt")
