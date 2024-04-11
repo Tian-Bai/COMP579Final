@@ -2,6 +2,8 @@ papers/
 code/trained/
 wandb/
 *.txt
+# will do the pic later
+*.png 
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
