@@ -224,8 +224,8 @@ def experiment(episodes=50, groupsize=20, update=30, lr=LR):
             agent.finish_episode()
         agent.finish_step(update, lr)
 
-        if i_step % 5 == 0:
-            print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))
+        # if i_step % 5 == 0:
+        #     print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))
     return ep_rewards
     
 if __name__ == '__main__':

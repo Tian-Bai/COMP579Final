@@ -161,8 +161,8 @@ def experiment(episodes=1000, lr=LR):
         ep_rewards.append(ep_reward)
         agent.finish_episode()
 
-        if i_episode % 5 == 0:
-            print('Episode {}\tLast reward: {:.2f}'.format(i_episode, ep_reward))
+        # if i_episode % 5 == 0:
+        #     print('Episode {}\tLast reward: {:.2f}'.format(i_episode, ep_reward))
     return ep_rewards
     
 if __name__ == '__main__':
