@@ -21,6 +21,7 @@ parser.add_argument('LR', action='store', type=float)
 parser.add_argument('groupsize', action='store', type=int)
 parser.add_argument('update', action='store', type=int)
 parser.add_argument('runs', action='store', type=int)
+parser.add_argument('-e', dest='episodes', action='store', type=int, default=1000)
 args = parser.parse_args()
 
 gamma = 0.95
@@ -241,8 +242,8 @@ def experiment(episodes=50, groupsize=20, update=30, lr=LR):
             agent.finish_episode()
         agent.finish_step(update, lr)
 
-        if i_step % 5 == 0:
-            print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))
+        # if i_step % 5 == 0:
+        #     print('Step {}\tLast reward: {:.2f}'.format(i_step, ep_reward))
     return ep_rewards
     
 if __name__ == '__main__':
@@ -254,7 +255,7 @@ if __name__ == '__main__':
     episodes = int(math.ceil(total_episodes / groupsize))
     update = args.update
 
-    with Pool(processes=12) as p:
+    with Pool() as p:
         all_rewards = p.starmap(experiment, [(episodes, groupsize, update, LR)] * runs)
 
     np.savetxt(f"ac ADAM value svrg {args.task} {groupsize} {update} {runs} lr={LR}.txt", np.array(all_rewards))

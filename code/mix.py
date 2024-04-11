@@ -21,20 +21,20 @@ To avoid reruning the code for multiple times,
 we save the rewards of different models as .txt files and generate the plot here.
 '''
 
-task = 'acrobot' # cartpole, acrobot
+task = 'cartpole' # cartpole, acrobot
 groupsize = 20
 
 svrggroupsize = 20
 update = 40
-runs = 10
-LR = '1e-4'
+runs = 50
+LR = 0.001
 
 if __name__ == '__main__':
-    ac = np.loadtxt(f"data\\{task}\\lr={LR}\\ac\\ac {task} {runs} lr={LR}.txt")
-    adam = np.loadtxt(f"data\\{task}\\lr={LR}\\ADAM\\ac ADAM {task} {runs} lr={LR}.txt")
-    ac_value_svrg = np.loadtxt(f"data\\{task}\\lr={LR}\\groupsize={groupsize}\\ac value svrg {task} {groupsize} {update} {runs} lr={LR}.txt")
-    ac_value_adasvrg = np.loadtxt(f"data\\{task}\\lr={LR}\\adasvrg groupsize={svrggroupsize}\\ac value adasvrg {task} {svrggroupsize} {update} {runs} lr={LR}.txt")
-    plt.figure(figsize=(10, 5))
+    ac = np.loadtxt(f"ac {task} {runs} lr={LR}.txt")
+    adam = np.loadtxt(f"ac ADAM {task} {runs} lr={LR}.txt")
+    ac_value_svrg = np.loadtxt(f"ac value svrg {task} {groupsize} {update} {runs} lr={LR}.txt")
+    ac_value_adasvrg = np.loadtxt(f"ac value adasvrg {task} {svrggroupsize} {update} {runs} lr={LR}.txt")
+    plt.figure(figsize=(20, 10))
 
     ac_mean = np.mean(ac, axis=0)
     ac_std = np.std(ac, axis=0)
@@ -54,12 +54,12 @@ if __name__ == '__main__':
     plt.plot(adam_mean, label="Adam")
     plt.fill_between(range(len(adam_mean)), adam_mean + adam_std, adam_mean - adam_std, alpha=0.3)
 
-    plt.plot(ac_value_mean, label="SVRG")
+    plt.plot(ac_value_mean, label=f"SVRG, groupsize={groupsize}, update={update}")
     plt.fill_between(range(len(ac_value_mean)), ac_value_mean + ac_value_std, ac_value_mean - ac_value_std, alpha=0.3)
     
-    plt.plot(ac_value_adasvrg_mean, label="AdaSVRG")
+    plt.plot(ac_value_adasvrg_mean, label=f"AdaSVRG, groupsize={groupsize}, update={update}")
     plt.fill_between(range(len(ac_value_adasvrg_mean)), ac_value_adasvrg_mean + ac_value_adasvrg_std, ac_value_adasvrg_mean - ac_value_adasvrg_std, alpha=0.3)
 
-    plt.xlabel(f"Comparison of algorithms on function value approximation (group size {groupsize}) on {task.capitalize()} task, lr = {LR}")
+    plt.xlabel(f"Comparison of Actor-Critic with different optimizers on {task.capitalize()} task, lr = {LR}")
     plt.legend()
     plt.savefig(f"ac vs svrg {task} groupsize={groupsize} vs ADAM vs AdaSVRG lr={LR}.png")

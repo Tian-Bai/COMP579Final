@@ -7,56 +7,56 @@ $beforetime = Get-Date
 
 # run experiments
 
-# cartpole
-python $ac @("cartpole", "1e-3", "50", "-e", "2000")
-python $ac @("cartpole", "3e-3", "50", "-e", "2000")
-python $ac @("cartpole", "1e-2", "50", "-e", "2000")
+# # cartpole
+# python $ac @("cartpole", "1e-3", "50", "-e", "2000")
+# python $ac @("cartpole", "3e-3", "50", "-e", "2000")
+# python $ac @("cartpole", "1e-2", "50", "-e", "2000")
 
-python $adam @("cartpole", "1e-3", "50", "-e", "2000")
-python $adam @("cartpole", "3e-3", "50", "-e", "2000")
-python $adam @("cartpole", "1e-2", "50", "-e", "2000")
+# python $adam @("cartpole", "1e-3", "50", "-e", "2000")
+# python $adam @("cartpole", "3e-3", "50", "-e", "2000")
+# python $adam @("cartpole", "1e-2", "50", "-e", "2000")
 
-# how will groupsize & update affect the performance?
+# # how will groupsize & update affect the performance?
 
-# 20 groupsize, 40 update
-python $svrg @("cartpole", "1e-3", "20", "40", "50", "-e", "2000")
-python $svrg @("cartpole", "3e-3", "20", "40", "50", "-e", "2000")
-python $svrg @("cartpole", "1e-2", "20", "40", "50", "-e", "2000")
+# # 20 groupsize, 40 update
+# python $svrg @("cartpole", "1e-3", "20", "40", "50", "-e", "2000")
+# python $svrg @("cartpole", "3e-3", "20", "40", "50", "-e", "2000")
+# python $svrg @("cartpole", "1e-2", "20", "40", "50", "-e", "2000")
 
-# 20 groupsize, 60 update
-python $svrg @("cartpole", "1e-3", "20", "60", "50", "-e", "2000")
-python $svrg @("cartpole", "3e-3", "20", "60", "50", "-e", "2000")
-python $svrg @("cartpole", "1e-2", "20", "60", "50", "-e", "2000")
+# # 20 groupsize, 60 update
+# python $svrg @("cartpole", "1e-3", "20", "60", "50", "-e", "2000")
+# python $svrg @("cartpole", "3e-3", "20", "60", "50", "-e", "2000")
+# python $svrg @("cartpole", "1e-2", "20", "60", "50", "-e", "2000")
 
-# 30 groupsize, 60 update
-python $svrg @("cartpole", "1e-3", "30", "60", "50", "-e", "2000")
-python $svrg @("cartpole", "3e-3", "30", "60", "50", "-e", "2000")
-python $svrg @("cartpole", "1e-2", "30", "60", "50", "-e", "2000")
+# # 30 groupsize, 60 update
+# python $svrg @("cartpole", "1e-3", "30", "60", "50", "-e", "2000")
+# python $svrg @("cartpole", "3e-3", "30", "60", "50", "-e", "2000")
+# python $svrg @("cartpole", "1e-2", "30", "60", "50", "-e", "2000")
 
-# 20 groupsize, 40 update
-python $adasvrg @("cartpole", "1e-3", "20", "40", "50", "-e", "2000")
-python $adasvrg @("cartpole", "3e-3", "20", "40", "50", "-e", "2000")
-python $adasvrg @("cartpole", "1e-2", "20", "40", "50", "-e", "2000")
+# # 20 groupsize, 40 update
+# python $adasvrg @("cartpole", "1e-3", "20", "40", "50", "-e", "2000")
+# python $adasvrg @("cartpole", "3e-3", "20", "40", "50", "-e", "2000")
+# python $adasvrg @("cartpole", "1e-2", "20", "40", "50", "-e", "2000")
 
-# 20 groupsize, 60 update
-python $adasvrg @("cartpole", "1e-3", "20", "60", "50", "-e", "2000")
-python $adasvrg @("cartpole", "3e-3", "20", "60", "50", "-e", "2000")
-python $adasvrg @("cartpole", "1e-2", "20", "60", "50", "-e", "2000")
+# # 20 groupsize, 60 update
+# python $adasvrg @("cartpole", "1e-3", "20", "60", "50", "-e", "2000")
+# python $adasvrg @("cartpole", "3e-3", "20", "60", "50", "-e", "2000")
+# python $adasvrg @("cartpole", "1e-2", "20", "60", "50", "-e", "2000")
 
-# 30 groupsize, 60 update
-python $adasvrg @("cartpole", "1e-3", "30", "60", "50", "-e", "2000")
-python $adasvrg @("cartpole", "3e-3", "30", "60", "50", "-e", "2000")
-python $adasvrg @("cartpole", "1e-2", "30", "60", "50", "-e", "2000")
+# # 30 groupsize, 60 update
+# python $adasvrg @("cartpole", "1e-3", "30", "60", "50", "-e", "2000")
+# python $adasvrg @("cartpole", "3e-3", "30", "60", "50", "-e", "2000")
+# python $adasvrg @("cartpole", "1e-2", "30", "60", "50", "-e", "2000")
 
-# acrobot
+# # acrobot
 
-python $ac @("acrobot", "1e-4", "50", "-e", "2000")
-python $ac @("acrobot", "3e-4", "50", "-e", "2000")
-python $ac @("acrobot", "1e-3", "50", "-e", "2000")
+# python $ac @("acrobot", "1e-4", "50", "-e", "2000")
+# python $ac @("acrobot", "3e-4", "50", "-e", "2000")
+# python $ac @("acrobot", "1e-3", "50", "-e", "2000")
 
-python $adam @("acrobot", "1e-4", "50", "-e", "2000")
-python $adam @("acrobot", "3e-4", "50", "-e", "2000")
-python $adam @("acrobot", "1e-3", "50", "-e", "2000")
+# python $adam @("acrobot", "1e-4", "50", "-e", "2000")
+# python $adam @("acrobot", "3e-4", "50", "-e", "2000")
+# python $adam @("acrobot", "1e-3", "50", "-e", "2000")
 
 # how will groupsize & update affect the performance?
 
