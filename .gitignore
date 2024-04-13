@@ -3,7 +3,7 @@ code/trained/
 wandb/
 *.txt
 # will do the pic later
-*.png 
+pic & data/
 *.zip
 
 # Byte-compiled / optimized / DLL files
