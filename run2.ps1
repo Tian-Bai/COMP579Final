@@ -40,3 +40,5 @@ $afterstring = $aftertime.ToString("MM-dd HH:mm:ss")
 $minutes = ($aftertime - $beforetime).TotalMinutes
 
 Write-Host "Start: $beforestring, End: $afterstring, time spent: $minutes minutes"
+
+# adam svrg is bad now

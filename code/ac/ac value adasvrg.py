@@ -249,7 +249,7 @@ if __name__ == '__main__':
     episodes = int(math.ceil(total_episodes / groupsize))
     update = args.update
 
-    with Pool(processes=12) as p:
+    with Pool() as p:
         all_rewards = p.starmap(experiment, [(episodes, groupsize, update, LR)] * runs)
 
     np.savetxt(f"ac value adasvrg {args.task} {groupsize} {update} {runs} lr={LR}.txt", np.array(all_rewards))
