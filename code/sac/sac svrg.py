@@ -22,6 +22,11 @@ from IPython.display import clear_output
 import matplotlib.pyplot as plt
 import argparse
 from multiprocessing import Pool
+import os
+import time
+import cProfile
+
+debug = False
 
 GPU = False
 device_idx = 0
@@ -31,13 +36,21 @@ else:
     device = torch.device("cpu")
 print(device)
 
+if debug:
+    random.seed(33)
+    np.random.seed(33)
+    os.environ['PYTHONHASHSEED'] = str(33)
+    torch.manual_seed(33)
+    torch.cuda.manual_seed(33)
+    torch.backends.cudnn.deterministic = True
+
 parser = argparse.ArgumentParser()
 parser.add_argument('task', action='store')
 parser.add_argument('LR', action='store', type=float)
 parser.add_argument('groupsize', action='store', type=int)
 parser.add_argument('update', action='store', type=int)
 parser.add_argument('runs', action='store', type=int)
-parser.add_argument('-e', dest='episodes', action='store', type=int, default=1000)
+parser.add_argument('-e', dest='episodes', action='store', type=int, default=200)
 args = parser.parse_args()
 
 # choose env
@@ -106,8 +119,7 @@ class SoftQNetwork(nn.Module):
         x = F.tanh(self.linear2(x))
         # x = F.tanh(self.linear3(x))
         x = self.linear4(x)
-        return x
-        
+        return x   
         
 class PolicyNetwork(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3, log_std_min=-20, log_std_max=2):
@@ -223,6 +235,7 @@ class SAC_Trainer():
         # calculate the gradients and store them
         self.soft_q_net1.zero_grad()
         q_value_loss1.backward()
+
         q_value_grad1 = [p.grad for p in self.soft_q_net1.parameters()]
         self.soft_q1_past_grad.append(q_value_grad1)
 
@@ -283,13 +296,13 @@ class SAC_Trainer():
 
             # Same process as in calc_grad()...
             # calculate the current gradient
-            predicted_q_value1 = self.soft_q_net1(self.sampled_state[t])
-            predicted_q_value1 = predicted_q_value1.gather(1, self.sampled_action[t].unsqueeze(-1))
-            predicted_q_value2 = self.soft_q_net2(self.sampled_state[t])
-            predicted_q_value2 = predicted_q_value2.gather(1, self.sampled_action[t].unsqueeze(-1))
-            log_prob = self.policy_net.evaluate(self.sampled_state[t])
+            predicted_q_value1 = self.soft_q_net1(self.sampled_state[t].detach())
+            predicted_q_value1 = predicted_q_value1.gather(1, self.sampled_action[t].unsqueeze(-1).detach())
+            predicted_q_value2 = self.soft_q_net2(self.sampled_state[t].detach())
+            predicted_q_value2 = predicted_q_value2.gather(1, self.sampled_action[t].unsqueeze(-1).detach())
+            log_prob = self.policy_net.evaluate(self.sampled_state[t].detach())
             with torch.no_grad():
-                next_log_prob = self.policy_net.evaluate(self.sampled_next_state[t])
+                next_log_prob = self.policy_net.evaluate(self.sampled_next_state[t].detach())
 
             self.alpha = self.log_alpha.exp()
             target_q_min = (next_log_prob.exp() * (torch.min(self.target_soft_q_net1(self.sampled_next_state[t]), self.target_soft_q_net2(self.sampled_next_state[t])) - self.alpha * next_log_prob)).sum(dim=-1).unsqueeze(-1)
@@ -303,7 +316,7 @@ class SAC_Trainer():
             self.soft_q_net2.zero_grad()
             q_value_loss1.backward()
             q_value_loss2.backward()
-            
+
             with torch.no_grad():
                 for i, p in enumerate(self.soft_q_net1.parameters()):
                     new_p = p - lr[0] * (q_value_mu1[i] - self.soft_q1_past_grad[t][i] + p.grad)
@@ -317,7 +330,7 @@ class SAC_Trainer():
             with torch.no_grad():
                 predicted_new_q_value = torch.min(self.soft_q_net1(self.sampled_state[t]), self.soft_q_net2(self.sampled_state[t]))
             policy_loss = (log_prob.exp() * (self.alpha * log_prob - predicted_new_q_value)).sum(dim=-1).mean()
-            
+
             self.policy_net.zero_grad()
             policy_loss.backward()
 
@@ -344,6 +357,16 @@ class SAC_Trainer():
                     target_param.data * (1.0 - soft_tau) + param.data * soft_tau
                 )
         
+        # clear the buffers now
+        self.soft_q1_past_grad = []
+        self.soft_q2_past_grad = []
+        self.policy_past_grad = []
+        self.alpha_past_grad = []
+        self.sampled_state = []
+        self.sampled_action = []
+        self.sampled_next_state = []
+        self.sampled_reward = []
+        self.sampled_done = []
 
 def experiment():
     if args.task == 'cartpole':
@@ -357,7 +380,7 @@ def experiment():
     rewards = []
 
     for eps in range(max_episodes):
-        state, _ = env.reset()
+        state, _ = env.reset(seed=33)
         episode_reward = 0
         
         while True:
@@ -386,6 +409,8 @@ def experiment():
 
 if __name__ == '__main__':
     all_rewards = []
+
+    cProfile.run('experiment()')
 
     for k in range(args.runs):
         all_rewards.append(experiment())

@@ -22,6 +22,11 @@ from IPython.display import clear_output
 import matplotlib.pyplot as plt
 import argparse
 from multiprocessing import Pool
+import os
+import time
+import cProfile
+
+debug = False
 
 GPU = False
 device_idx = 0
@@ -38,6 +43,14 @@ parser.add_argument('update', action='store', type=int)
 parser.add_argument('runs', action='store', type=int)
 parser.add_argument('-e', dest='episodes', action='store', type=int, default=1000)
 args = parser.parse_args()
+
+if debug:
+    random.seed(33)
+    np.random.seed(33)
+    os.environ['PYTHONHASHSEED'] = str(33)
+    torch.manual_seed(33)
+    torch.cuda.manual_seed(33)
+    torch.backends.cudnn.deterministic = True
 
 # choose env
 if args.task == 'cartpole':
@@ -105,8 +118,7 @@ class SoftQNetwork(nn.Module):
         # x = F.tanh(self.linear3(x))
         x = self.linear4(x)
         return x
-        
-        
+            
 class PolicyNetwork(nn.Module):
     def __init__(self, num_inputs, num_actions, hidden_size, init_w=3e-3, log_std_min=-20, log_std_max=2):
         super(PolicyNetwork, self).__init__()
@@ -165,8 +177,6 @@ class SAC_Trainer():
         self.target_soft_q_net2 = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
         self.policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim).to(device)
         self.log_alpha = torch.zeros(1, dtype=torch.float32, requires_grad=True, device=device)
-        # print('Soft Q Network (1,2): ', self.soft_q_net1)
-        # print('Policy Network: ', self.policy_net)
 
         for target_param, param in zip(self.target_soft_q_net1.parameters(), self.soft_q_net1.parameters()):
             target_param.data.copy_(param.data)
@@ -176,10 +186,10 @@ class SAC_Trainer():
         self.soft_q_criterion1 = nn.MSELoss()
         self.soft_q_criterion2 = nn.MSELoss()
 
-        self.soft_q_optimizer1 = optim.Adam(self.soft_q_net1.parameters(), lr=LR[0])
-        self.soft_q_optimizer2 = optim.Adam(self.soft_q_net2.parameters(), lr=LR[0])
-        self.policy_optimizer = optim.Adam(self.policy_net.parameters(), lr=LR[1])
-        self.alpha_optimizer = optim.Adam([self.log_alpha], lr=LR[2])
+        self.soft_q_optimizer1 = optim.SGD(self.soft_q_net1.parameters(), lr=LR[0])
+        self.soft_q_optimizer2 = optim.SGD(self.soft_q_net2.parameters(), lr=LR[0])
+        self.policy_optimizer = optim.SGD(self.policy_net.parameters(), lr=LR[1])
+        self.alpha_optimizer = optim.SGD([self.log_alpha], lr=LR[2])
 
     
     def update(self, batch_size, reward_scale=10., auto_entropy=True, target_entropy=-2, gamma=0.99, soft_tau=1e-2):
@@ -218,7 +228,7 @@ class SAC_Trainer():
         with torch.no_grad():
             predicted_new_q_value = torch.min(self.soft_q_net1(state), self.soft_q_net2(state))
         policy_loss = (log_prob.exp() * (self.alpha * log_prob - predicted_new_q_value)).sum(dim=-1).mean()
-        
+
         self.policy_optimizer.zero_grad()
         policy_loss.backward()
         self.policy_optimizer.step()
@@ -262,7 +272,7 @@ def experiment():
     rewards = []
 
     for eps in range(max_episodes):
-        state, _ = env.reset()
+        state, _ = env.reset(seed=33)
         episode_reward = 0
         steps = 0
         
@@ -280,7 +290,7 @@ def experiment():
             
             if len(replay_buffer) > batch_size:
                 for i in range(update_itr):
-                    _ = sac_trainer.update(batch_size, reward_scale=1., auto_entropy=AUTO_ENTROPY, target_entropy=target_entropy)
+                    sac_trainer.update(batch_size, reward_scale=1., auto_entropy=AUTO_ENTROPY, target_entropy=target_entropy)
 
             if done:
                 break
@@ -292,8 +302,15 @@ def experiment():
 if __name__ == '__main__':
     all_rewards = []
 
-    with Pool(processes=10) as p:
-        all_rewards = p.starmap(experiment, [()] * args.runs)
+    if debug:
+        prof = cProfile.Profile()
+        prof.run('experiment()')
+        prof.dump_stats('sac.prof')
+
+    for k in range(args.runs):
+        all_rewards.append(experiment())
+    # with Pool(processes=10) as p:
+    #     all_rewards = p.starmap(experiment, [()] * args.runs)
 
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)

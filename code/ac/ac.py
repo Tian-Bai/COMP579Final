@@ -17,7 +17,7 @@ parser = argparse.ArgumentParser()
 parser.add_argument('task', action='store')
 parser.add_argument('LR', action='store', type=float)
 parser.add_argument('runs', action='store', type=int)
-parser.add_argument('-e', dest='episodes', action='store', type=int, default=1000)
+parser.add_argument('-e', dest='episodes', action='store', type=int, default=200)
 args = parser.parse_args()
 
 gamma = 0.95
