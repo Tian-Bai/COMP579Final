@@ -307,10 +307,10 @@ if __name__ == '__main__':
         prof.run('experiment()')
         prof.dump_stats('sac.prof')
 
-    for k in range(args.runs):
-        all_rewards.append(experiment())
-    # with Pool(processes=10) as p:
-    #     all_rewards = p.starmap(experiment, [()] * args.runs)
+    # for k in range(args.runs):
+    #     all_rewards.append(experiment())
+    with Pool(processes=10) as p:
+        all_rewards = p.starmap(experiment, [()] * args.runs)
 
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
