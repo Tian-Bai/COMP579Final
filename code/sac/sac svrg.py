@@ -167,8 +167,6 @@ class SAC_Trainer():
         self.target_soft_q_net2 = SoftQNetwork(state_dim, action_dim, hidden_dim).to(device)
         self.policy_net = PolicyNetwork(state_dim, action_dim, hidden_dim).to(device)
         self.log_alpha = torch.zeros(1, dtype=torch.float32, requires_grad=True, device=device)
-        # print('Soft Q Network (1,2): ', self.soft_q_net1)
-        # print('Policy Network: ', self.policy_net)
 
         for target_param, param in zip(self.target_soft_q_net1.parameters(), self.soft_q_net1.parameters()):
             target_param.data.copy_(param.data)
@@ -177,11 +175,6 @@ class SAC_Trainer():
 
         self.soft_q_criterion1 = nn.MSELoss()
         self.soft_q_criterion2 = nn.MSELoss()
-
-        # self.soft_q_optimizer1 = optim.Adam(self.soft_q_net1.parameters(), lr=LR[0])
-        # self.soft_q_optimizer2 = optim.Adam(self.soft_q_net2.parameters(), lr=LR[0])
-        # self.policy_optimizer = optim.Adam(self.policy_net.parameters(), lr=LR[1])
-        # self.alpha_optimizer = optim.Adam([self.log_alpha], lr=LR[2])
 
         self.soft_q1_past_grad = []
         self.soft_q2_past_grad = []
@@ -197,7 +190,6 @@ class SAC_Trainer():
     
     def calc_grad(self, batch_size, reward_scale=10., auto_entropy=True, target_entropy=-2, gamma=0.99, soft_tau=1e-2):
         state, action, reward, next_state, done = self.replay_buffer.sample(batch_size)
-        # print('sample:', state, action,  reward, done)
 
         state      = torch.FloatTensor(state).to(device)
         next_state = torch.FloatTensor(next_state).to(device)
@@ -221,7 +213,7 @@ class SAC_Trainer():
             next_log_prob = self.policy_net.evaluate(next_state)
         # reward = reward_scale * (reward - reward.mean(dim=0)) / (reward.std(dim=0) + 1e-6) # normalize with batch mean and std; plus a small number to prevent numerical problem
 
-    # Training Q Function
+    # Calculating Q gradient
         self.alpha = self.log_alpha.exp()
         target_q_min = (next_log_prob.exp() * (torch.min(self.target_soft_q_net1(next_state), self.target_soft_q_net2(next_state)) - self.alpha * next_log_prob)).sum(dim=-1).unsqueeze(-1)
         target_q_value = reward + (1 - done) * gamma * target_q_min # if done==1, only reward
@@ -232,16 +224,14 @@ class SAC_Trainer():
         self.soft_q_net1.zero_grad()
         q_value_loss1.backward()
         q_value_grad1 = [p.grad for p in self.soft_q_net1.parameters()]
-        # self.soft_q_optimizer1.step()
         self.soft_q1_past_grad.append(q_value_grad1)
 
         self.soft_q_net2.zero_grad()
         q_value_loss2.backward()
-        q_value_grad2 = [p.grad for p in self.soft_q_net2.parameters()]
-        #self.soft_q_optimizer2.step()  
+        q_value_grad2 = [p.grad for p in self.soft_q_net2.parameters()] 
         self.soft_q2_past_grad.append(q_value_grad2)
 
-    # Training Policy Function
+    # Calculating policy gradient
         with torch.no_grad():
             predicted_new_q_value = torch.min(self.soft_q_net1(state), self.soft_q_net2(state))
         policy_loss = (log_prob.exp() * (self.alpha * log_prob - predicted_new_q_value)).sum(dim=-1).mean()
@@ -252,7 +242,7 @@ class SAC_Trainer():
         # self.policy_optimizer.step()
         self.policy_past_grad.append(policy_grad)
 
-    # Updating alpha wrt entropy
+    # Calculating alpha gradient
         # alpha = 0.0  # trade-off between exploration (max entropy) and exploitation (max Q) 
         if auto_entropy is True:
             alpha_loss = -(self.log_alpha * (log_prob + target_entropy).detach()).mean()
@@ -260,14 +250,10 @@ class SAC_Trainer():
             self.log_alpha.grad.zero_() # zero_grad() a single tensor
             alpha_loss.backward()
             alpha_grad = [self.log_alpha.grad]
-            # self.alpha_optimizer.step()
             self.alpha_past_grad.append(alpha_grad)
         else:
             self.alpha = 1.
             alpha_loss = 0
-        
-        # print('q loss: ', q_value_loss1.item(), q_value_loss2.item())
-        # print('policy loss: ', policy_loss.item() )
             
         return predicted_new_q_value.mean()
 
@@ -327,7 +313,7 @@ class SAC_Trainer():
                     new_p = p - lr[0] * (q_value_mu2[i] - self.soft_q2_past_grad[t][i] + p.grad)
                     p.copy_(new_p)
             
-            # notice that here, the loss is w.r.t the two updated q networks, as in the vanilla ac
+            # notice that here, the loss is w.r.t the two updated q networks, as in the vanilla sac
             with torch.no_grad():
                 predicted_new_q_value = torch.min(self.soft_q_net1(self.sampled_state[t]), self.soft_q_net2(self.sampled_state[t]))
             policy_loss = (log_prob.exp() * (self.alpha * log_prob - predicted_new_q_value)).sum(dim=-1).mean()
@@ -401,8 +387,10 @@ def experiment():
 if __name__ == '__main__':
     all_rewards = []
 
-    with Pool(processes=10) as p:
-        all_rewards = p.starmap(experiment, [()] * args.runs)
+    for k in range(args.runs):
+        all_rewards.append(experiment())
+    # with Pool(processes=10) as p:
+    #     all_rewards = p.starmap(experiment, [()] * args.runs)
 
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -410,4 +398,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'sac {args.task} {args.runs} update={args.update} lr={args.LR}.png')
+    plt.savefig(f'sac svrg {args.task} {args.runs} groupsize={groupsize} update={args.update} lr={args.LR}.png')

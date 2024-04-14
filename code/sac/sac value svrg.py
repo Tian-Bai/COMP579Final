@@ -57,7 +57,7 @@ max_episodes    = args.episodes
 batch_size      = 256
 groupsize       = args.groupsize
 update_itr      = args.update
-AUTO_ENTROPY    = True
+AUTO_ENTROPY    = False
 DETERMINISTIC   = False
 hidden_dim      = 32
 target_entropy  = -1. * action_dim
@@ -181,11 +181,6 @@ class SAC_Trainer():
         self.policy_optimizer = optim.Adam(self.policy_net.parameters(), lr=LR[1])
         self.alpha_optimizer = optim.Adam([self.log_alpha], lr=LR[2])
 
-        # self.soft_q_optimizer1 = optim.Adam(self.soft_q_net1.parameters(), lr=LR[0])
-        # self.soft_q_optimizer2 = optim.Adam(self.soft_q_net2.parameters(), lr=LR[0])
-        # self.policy_optimizer = optim.Adam(self.policy_net.parameters(), lr=LR[1])
-        # self.alpha_optimizer = optim.Adam([self.log_alpha], lr=LR[2])
-
         self.soft_q1_past_grad = []
         self.soft_q2_past_grad = []
 
@@ -194,11 +189,9 @@ class SAC_Trainer():
         self.sampled_action = []
         self.sampled_reward = []
         self.sampled_done = []
-
     
-    def calc_grad(self, batch_size, reward_scale=10., auto_entropy=True, target_entropy=-2, gamma=0.99, soft_tau=1e-2):
+    def calc_grad(self, batch_size, reward_scale=10., gamma=0.99):
         state, action, reward, next_state, done = self.replay_buffer.sample(batch_size)
-        # print('sample:', state, action,  reward, done)
 
         state      = torch.FloatTensor(state).to(device)
         next_state = torch.FloatTensor(next_state).to(device)
@@ -222,7 +215,7 @@ class SAC_Trainer():
             next_log_prob = self.policy_net.evaluate(next_state)
         # reward = reward_scale * (reward - reward.mean(dim=0)) / (reward.std(dim=0) + 1e-6) # normalize with batch mean and std; plus a small number to prevent numerical problem
 
-    # Obtaining Q gradients
+    # Calculating Q gradients
         self.alpha = self.log_alpha.exp()
         target_q_min = (next_log_prob.exp() * (torch.min(self.target_soft_q_net1(next_state), self.target_soft_q_net2(next_state)) - self.alpha * next_log_prob)).sum(dim=-1).unsqueeze(-1)
         target_q_value = reward + (1 - done) * gamma * target_q_min # if done==1, only reward
@@ -233,16 +226,14 @@ class SAC_Trainer():
         self.soft_q_net1.zero_grad()
         q_value_loss1.backward()
         q_value_grad1 = [p.grad for p in self.soft_q_net1.parameters()]
-        # self.soft_q_optimizer1.step()
         self.soft_q1_past_grad.append(q_value_grad1)
 
         self.soft_q_net2.zero_grad()
         q_value_loss2.backward()
-        q_value_grad2 = [p.grad for p in self.soft_q_net2.parameters()]
-        #self.soft_q_optimizer2.step()  
+        q_value_grad2 = [p.grad for p in self.soft_q_net2.parameters()] 
         self.soft_q2_past_grad.append(q_value_grad2)
 
-    def update(self, update_itr, lr=LR, auto_entropy=True, gamma=0.99, soft_tau=1e-2):
+    def update(self, update_itr, lr=LR, gamma=0.99, soft_tau=1e-2):
         n = len(self.soft_q1_past_grad)
 
         q_value_mu1 = [torch.zeros_like(p.grad) for p in self.soft_q_net1.parameters()]
@@ -353,8 +344,8 @@ def experiment():
             if len(replay_buffer) > batch_size:
                 # here, use svrg style upate
                 for i in range(groupsize):
-                    sac_trainer.calc_grad(batch_size, reward_scale=1., auto_entropy=AUTO_ENTROPY, target_entropy=target_entropy)
-                sac_trainer.update(update_itr, auto_entropy=AUTO_ENTROPY)
+                    sac_trainer.calc_grad(batch_size)
+                sac_trainer.update(update_itr)
 
                 # as in sac paper, policy is update after q networks, so we follow it here
                 sac_trainer.train_policy()
@@ -369,8 +360,10 @@ def experiment():
 if __name__ == '__main__':
     all_rewards = []
 
-    with Pool(processes=10) as p:
-        all_rewards = p.starmap(experiment, [()] * args.runs)
+    for k in range(args.runs):
+        all_rewards.append(experiment())
+    # with Pool(processes=10) as p:
+    #     all_rewards = p.starmap(experiment, [()] * args.runs)
 
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -378,4 +371,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'sac {args.task} {args.runs} update={args.update} lr={args.LR}.png')
+    plt.savefig(f'sac value svrg {args.task} {args.runs} groupsize={groupsize} update={args.update} lr={args.LR}.png')
