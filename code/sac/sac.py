@@ -274,13 +274,11 @@ def experiment():
     for eps in range(max_episodes):
         state, _ = env.reset(seed=33)
         episode_reward = 0
-        steps = 0
         
         while True:
             action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
             next_state, reward, term, trunc, _ = env.step(action)
             done = term or trunc
-            steps += 1
             # env.render()       
                 
             replay_buffer.push(state, action, reward, next_state, done)
@@ -295,22 +293,19 @@ def experiment():
             if done:
                 break
 
-        print('Episode: ', eps, '| Episode Reward: ', episode_reward, '| Episode Length: ', steps)
+        print('Episode: ', eps, '| Episode Reward: ', episode_reward)
         rewards.append(episode_reward)
     return rewards
 
 if __name__ == '__main__':
     all_rewards = []
 
-    if debug:
-        prof = cProfile.Profile()
-        prof.run('experiment()')
-        prof.dump_stats('sac.prof')
-
     # for k in range(args.runs):
     #     all_rewards.append(experiment())
     with Pool(processes=10) as p:
         all_rewards = p.starmap(experiment, [()] * args.runs)
+
+    np.savetxt(f'sac {args.task} update={args.update} {args.runs} lr={args.LR}.txt', np.array(all_rewards))
 
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -318,4 +313,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'sac {args.task} {args.runs} update={args.update} lr={args.LR}.png')
+    plt.savefig(f'sac {args.task} update={args.update} {args.runs} lr={args.LR}.png')

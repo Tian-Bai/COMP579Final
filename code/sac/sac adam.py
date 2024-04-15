@@ -274,13 +274,11 @@ def experiment():
     for eps in range(max_episodes):
         state, _ = env.reset(seed=33)
         episode_reward = 0
-        steps = 0
         
         while True:
             action = sac_trainer.policy_net.get_action(state, deterministic = DETERMINISTIC)
             next_state, reward, term, trunc, _ = env.step(action)
             done = term or trunc
-            steps += 1
             # env.render()       
                 
             replay_buffer.push(state, action, reward, next_state, done)
@@ -296,7 +294,7 @@ def experiment():
             if done:
                 break
 
-        print('Episode: ', eps, '| Episode Reward: ', episode_reward, '| Episode Length: ', steps)
+        print('Episode: ', eps, '| Episode Reward: ', episode_reward)
         rewards.append(episode_reward)
     return rewards
 

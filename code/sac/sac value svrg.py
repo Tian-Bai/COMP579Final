@@ -244,7 +244,7 @@ class SAC_Trainer():
         q_value_grad2 = [p.grad for p in self.soft_q_net2.parameters()] 
         self.soft_q2_past_grad.append(q_value_grad2)
 
-    def update(self, update_itr, lr=LR, gamma=0.99, soft_tau=1e-2):
+    def update(self, update_itr, lr=LR, auto_entropy=AUTO_ENTROPY, gamma=0.99, soft_tau=1e-2):
         n = len(self.soft_q1_past_grad)
 
         q_value_mu1 = [torch.zeros_like(p.grad) for p in self.soft_q_net1.parameters()]
@@ -262,13 +262,13 @@ class SAC_Trainer():
 
             # Same process as in calc_grad()...
             # calculate the current gradient
-            predicted_q_value1 = self.soft_q_net1(self.sampled_state[t])
-            predicted_q_value1 = predicted_q_value1.gather(1, self.sampled_action[t].unsqueeze(-1))
-            predicted_q_value2 = self.soft_q_net2(self.sampled_state[t])
-            predicted_q_value2 = predicted_q_value2.gather(1, self.sampled_action[t].unsqueeze(-1))
-            log_prob = self.policy_net.evaluate(self.sampled_state[t])
+            predicted_q_value1 = self.soft_q_net1(self.sampled_state[t].detach())
+            predicted_q_value1 = predicted_q_value1.gather(1, self.sampled_action[t].unsqueeze(-1).detach())
+            predicted_q_value2 = self.soft_q_net2(self.sampled_state[t].detach())
+            predicted_q_value2 = predicted_q_value2.gather(1, self.sampled_action[t].unsqueeze(-1).detach())
+            log_prob = self.policy_net.evaluate(self.sampled_state[t].detach())
             with torch.no_grad():
-                next_log_prob = self.policy_net.evaluate(self.sampled_next_state[t])
+                next_log_prob = self.policy_net.evaluate(self.sampled_next_state[t].detach())
 
             self.alpha = self.log_alpha.exp()
             target_q_min = (next_log_prob.exp() * (torch.min(self.target_soft_q_net1(self.sampled_next_state[t]), self.target_soft_q_net2(self.sampled_next_state[t])) - self.alpha * next_log_prob)).sum(dim=-1).unsqueeze(-1)
@@ -292,6 +292,27 @@ class SAC_Trainer():
                     new_p = p - lr[0] * (q_value_mu2[i] - self.soft_q2_past_grad[t][i] + p.grad)
                     p.copy_(new_p)
 
+            # perform normal update on policy network
+            with torch.no_grad():
+                predicted_new_q_value = torch.min(self.soft_q_net1(self.sampled_state[t].detach()), self.soft_q_net2(self.sampled_state[t].detach()))
+            policy_loss = (log_prob.exp() * (self.alpha * log_prob - predicted_new_q_value)).sum(dim=-1).mean()
+
+            self.policy_optimizer.zero_grad()
+            policy_loss.backward()
+            self.policy_optimizer.step()
+
+            # Updating alpha wrt entropy
+            # alpha = 0.0  # trade-off between exploration (max entropy) and exploitation (max Q) 
+            if auto_entropy is True:
+                alpha_loss = -(self.log_alpha * (log_prob + target_entropy).detach()).mean()
+                # print('alpha loss: ',alpha_loss)
+                self.alpha_optimizer.zero_grad()
+                alpha_loss.backward()
+                self.alpha_optimizer.step()
+            else:
+                self.alpha = 1.
+                alpha_loss = 0
+
             # do the soft update now
             for target_param, param in zip(self.target_soft_q_net1.parameters(), self.soft_q_net1.parameters()):
                 target_param.data.copy_(  # copy data value into target parameters
@@ -310,30 +331,6 @@ class SAC_Trainer():
         self.sampled_next_state = []
         self.sampled_reward = []
         self.sampled_done = []
-        
-    def train_policy(self, auto_entropy=True):
-        for state in self.sampled_state:
-            log_prob = self.policy_net.evaluate(state)
-
-            with torch.no_grad():
-                predicted_new_q_value = torch.min(self.soft_q_net1(state), self.soft_q_net2(state))
-            policy_loss = (log_prob.exp() * (self.alpha.detach() * log_prob - predicted_new_q_value)).sum(dim=-1).mean()
-            
-            self.policy_optimizer.zero_grad()
-            policy_loss.backward()
-            self.policy_optimizer.step()
-
-            # Updating alpha wrt entropy
-            # alpha = 0.0  # trade-off between exploration (max entropy) and exploitation (max Q) 
-            if auto_entropy is True:
-                alpha_loss = -(self.log_alpha * (log_prob + target_entropy).detach()).mean()
-                # print('alpha loss: ',alpha_loss)
-                self.alpha_optimizer.zero_grad()
-                alpha_loss.backward()
-                self.alpha_optimizer.step()
-            else:
-                self.alpha = 1.
-                alpha_loss = 0
 
 def experiment():
     if args.task == 'cartpole':
@@ -367,9 +364,6 @@ def experiment():
                     sac_trainer.calc_grad(batch_size)
                 sac_trainer.update(update_itr)
 
-                # as in sac paper, policy is update after q networks, so we follow it here
-                sac_trainer.train_policy()
-
             if done:
                 break
 
@@ -385,10 +379,12 @@ if __name__ == '__main__':
     with Pool(processes=10) as p:
         all_rewards = p.starmap(experiment, [()] * args.runs)
 
+    np.savetxt(f'sac value svrg {args.task} groupsize={args.groupsize} update={args.update} {args.runs} lr={args.LR}.txt', np.array(all_rewards))
+
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
 
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'sac value svrg {args.task} {args.runs} groupsize={groupsize} update={args.update} lr={args.LR}.png')
+    plt.savefig(f'sac value svrg {args.task} groupsize={args.groupsize} update={args.update} {args.runs} lr={args.LR}.png')

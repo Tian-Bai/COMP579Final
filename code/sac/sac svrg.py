@@ -410,12 +410,12 @@ def experiment():
 if __name__ == '__main__':
     all_rewards = []
 
-    cProfile.run('experiment()')
-
     # for k in range(args.runs):
     #     all_rewards.append(experiment())
     with Pool(processes=10) as p:
         all_rewards = p.starmap(experiment, [()] * args.runs)
+
+    np.savetxt(f'sac svrg {args.task} groupsize={args.groupsize} update={args.update} {args.runs} lr={args.LR}.txt', np.array(all_rewards))
 
     mean = np.mean(all_rewards, axis=0)
     std = np.std(all_rewards, axis=0)
@@ -423,4 +423,4 @@ if __name__ == '__main__':
     plt.figure(figsize=(30, 15))
     plt.plot(mean)
     plt.fill_between(range(len(mean)), mean - std, mean + std, alpha=0.3)
-    plt.savefig(f'sac svrg {args.task} {args.runs} groupsize={groupsize} update={args.update} lr={args.LR}.png')
+    plt.savefig(f'sac svrg {args.task} groupsize={args.groupsize} update={args.update} {args.runs} lr={args.LR}.png')
