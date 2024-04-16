@@ -57,7 +57,7 @@ args = parser.parse_args()
 if args.task == 'cartpole':
     sample_env = gym.make('CartPole-v1')
 elif args.task == 'acrobot':
-    sample_env = gym.make('Acrobot-v0')
+    sample_env = gym.make('Acrobot-v1')
 state_dim  = sample_env.observation_space.shape[0]
 action_dim = sample_env.action_space.n  # discrete
 del sample_env
@@ -372,7 +372,7 @@ def experiment():
     if args.task == 'cartpole':
         env = gym.make('CartPole-v1')
     elif args.task == 'acrobot':
-        env = gym.make('Acrobot-v0')
+        env = gym.make('Acrobot-v1')
 
     replay_buffer_size = 1e6
     replay_buffer = ReplayBuffer(replay_buffer_size)
