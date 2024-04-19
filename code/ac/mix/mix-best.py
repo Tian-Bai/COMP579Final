@@ -39,7 +39,7 @@ if __name__ == '__main__':
     adam = np.loadtxt(f"pic & data\\ac ADAM {task} {runs} lr={LR[1]}.txt")
     ac_value_svrg = np.loadtxt(f"pic & data\\ac value svrg {task} {groupsize[0]} {update[0]} {runs} lr={LR[2]}.txt")
     ac_value_adasvrg = np.loadtxt(f"pic & data\\ac value adasvrg {task} {groupsize[1]} {update[1]} {runs} lr={LR[3]}.txt")
-    plt.figure(figsize=(20, 10))
+    plt.figure(figsize=(14, 7))
 
     ac_mean = np.mean(ac, axis=0)
     ac_std = np.std(ac, axis=0)
@@ -65,6 +65,6 @@ if __name__ == '__main__':
     plt.plot(ac_value_adasvrg_mean, label=f"AdaSVRG, groupsize={groupsize[1]}, update={update[1]}, lr={LR[3]}")
     plt.fill_between(range(len(ac_value_adasvrg_mean)), ac_value_adasvrg_mean + ac_value_adasvrg_std, ac_value_adasvrg_mean - ac_value_adasvrg_std, alpha=0.3)
 
-    plt.xlabel(f"Comparison of Actor-Critic with different optimizers on {task.capitalize()} task")
+    # plt.xlabel(f"Comparison of Actor-Critic with different optimizers on {task.capitalize()} task")
     plt.legend()
     plt.savefig(f"ac vs adam vs svrg vs adasvrg on {task}.png")

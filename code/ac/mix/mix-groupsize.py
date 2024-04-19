@@ -74,6 +74,6 @@ if __name__ == '__main__':
     
     
 
-    plt.xlabel(f"Comparison of different groupsizes and updates on AdaSVRG Actor-Critic for {task.capitalize()} task, lr = {LR}")
+    # plt.xlabel(f"Comparison of different groupsizes and updates on AdaSVRG Actor-Critic for {task.capitalize()} task, lr = {LR}")
     plt.legend()
     plt.savefig(f"comp {task} groupsizes & updates lr={LR}.png")

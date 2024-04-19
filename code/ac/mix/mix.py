@@ -60,6 +60,6 @@ if __name__ == '__main__':
     plt.plot(ac_value_adasvrg_mean, label=f"AdaSVRG, groupsize={groupsize}, update={update}")
     plt.fill_between(range(len(ac_value_adasvrg_mean)), ac_value_adasvrg_mean + ac_value_adasvrg_std, ac_value_adasvrg_mean - ac_value_adasvrg_std, alpha=0.3)
 
-    plt.xlabel(f"Comparison of Actor-Critic with different optimizers on {task.capitalize()} task, lr = {LR}")
+    # plt.xlabel(f"Comparison of Actor-Critic with different optimizers on {task.capitalize()} task, lr = {LR}")
     plt.legend()
     plt.savefig(f"ac vs svrg {task} groupsize={groupsize} vs ADAM vs AdaSVRG lr={LR}.png")

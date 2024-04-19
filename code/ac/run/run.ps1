@@ -1,13 +1,16 @@
-$ac = Join-Path $PSScriptRoot "code\ac\ac.py"
-$adam = Join-Path $PSScriptRoot "code\ac\ac adam.py"
-$svrg = Join-Path $PSScriptRoot "code\ac\ac value svrg.py"
-$adasvrg = Join-Path $PSScriptRoot "code\ac\ac value adasvrg.py"
+$p = Split-Path $PSScriptRoot -Parent
+
+Write-Host $p 
+
+$ac = Join-Path $p "ac.py"
+$adam = Join-Path $p "ac adam.py"
+$svrg = Join-Path $p "ac value svrg.py"
+$adasvrg = Join-Path $p "sac value adasvrg.py"
 
 $beforetime = Get-Date
 
 # run experiments
 
-# cartpole
 python $ac @("cartpole", "1e-3", "50", "-e", "2000")
 python $ac @("cartpole", "3e-3", "50", "-e", "2000")
 python $ac @("cartpole", "1e-2", "50", "-e", "2000")
@@ -58,7 +61,7 @@ python $adam @("acrobot", "1e-4", "50", "-e", "2000")
 python $adam @("acrobot", "3e-4", "50", "-e", "2000")
 python $adam @("acrobot", "1e-3", "50", "-e", "2000")
 
-how will groupsize & update affect the performance?
+# how will groupsize & update affect the performance?
 
 # 20 groupsize, 40 update
 python $svrg @("acrobot", "1e-4", "20", "40", "50", "-e", "2000")
